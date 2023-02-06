@@ -1,5 +1,4 @@
-
-
+// include: shell.js
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -15,191 +14,9 @@
 // can continue to use Module afterwards as well.
 var Module = globalThis.Module || (typeof Module != 'undefined' ? Module : {});
 
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
-
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 
-  if (!Module.expectedDataFileDownloads) {
-    Module.expectedDataFileDownloads = 0;
-  }
-
-  Module.expectedDataFileDownloads++;
-  (function() {
-    // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) return;
-    var loadPackage = function(metadata) {
-
-      var PACKAGE_PATH = '';
-      if (typeof window === 'object') {
-        PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
-      } else if (typeof process === 'undefined' && typeof location !== 'undefined') {
-        // web worker
-        PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
-      }
-      var PACKAGE_NAME = 'hotwire.data';
-      var REMOTE_PACKAGE_BASE = 'hotwire.data';
-      if (typeof Module['locateFilePackage'] === 'function' && !Module['locateFile']) {
-        Module['locateFile'] = Module['locateFilePackage'];
-        err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
-      }
-      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
-var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
-
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
-        
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
-            }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
-            }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus']('Downloading data... (' + loaded + '/' + total + ')');
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
-          }
-        };
-        xhr.onerror = function(event) {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
-          } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
-          }
-        };
-        xhr.send(null);
-      };
-
-      function handleError(error) {
-        console.error('package error:', error);
-      };
-
-      var fetchedCallback = null;
-      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
-
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
-        if (fetchedCallback) {
-          fetchedCallback(data);
-          fetchedCallback = null;
-        } else {
-          fetched = data;
-        }
-      }, handleError);
-
-    function runWithFS() {
-
-      function assert(check, msg) {
-        if (!check) throw msg + new Error().stack;
-      }
-
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency']('fp ' + this.name);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: function(byteArray) {
-          var that = this;
-          // canOwn this data in the filesystem, it is a slide into the heap that will never change
-          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
-          Module['removeRunDependency']('fp ' + that.name);
-          this.requests[this.name] = null;
-        }
-      };
-
-      var files = metadata['files'];
-      for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }
-
-      function processPackageData(arrayBuffer) {
-        assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
-        var byteArray = new Uint8Array(arrayBuffer);
-        var curr;
-        // Reuse the bytearray from the XHR as the source for file reads.
-          DataRequest.prototype.byteArray = byteArray;
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            DataRequest.prototype.requests[files[i].filename].onload();
-          }          Module['removeRunDependency']('datafile_hotwire.data');
-
-      };
-      Module['addRunDependency']('datafile_hotwire.data');
-
-      if (!Module.preloadResults) Module.preloadResults = {};
-
-      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
-      if (fetched) {
-        processPackageData(fetched);
-        fetched = null;
-      } else {
-        fetchedCallback = processPackageData;
-      }
-
-    }
-    if (Module['calledRun']) {
-      runWithFS();
-    } else {
-      if (!Module['preRun']) Module['preRun'] = [];
-      Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
-    }
-
-    }
-    loadPackage({"files": [{"filename": "/MaterialIcons-Regular.ttf", "start": 0, "end": 356220}, {"filename": "/ReadexPro-Light.ttf", "start": 356220, "end": 483884}], "remote_package_size": 483884});
-
-  })();
-
-
-    // All the pre-js content up to here must remain later on, we need to run
-    // it.
-    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) Module['preRun'] = [];
-    var necessaryPreJSTasks = Module['preRun'].slice();
-  
-    if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
-    necessaryPreJSTasks.forEach(function(task) {
-      if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
-    });
-  
 
 // Sometimes an existing Module object exists with properties
 // meant to overwrite the default module functionality. Here
@@ -217,13 +34,14 @@ var quit_ = (status, toThrow) => {
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
+var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
+
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = typeof window == 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
 var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET;
 
 if (Module['ENVIRONMENT']) {
@@ -303,6 +121,10 @@ if (ENVIRONMENT_IS_SHELL) {
     setTimeout(() => onload(readBinary(f)), 0);
   };
 
+  if (typeof clearTimeout == 'undefined') {
+    globalThis.clearTimeout = (id) => {};
+  }
+
   if (typeof scriptArgs != 'undefined') {
     arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {
@@ -352,9 +174,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   // be done differently.
   {
 // include: web_or_worker_shell_read.js
-
-
-  read_ = (url) => {
+read_ = (url) => {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url, false);
       xhr.send(null);
@@ -446,116 +266,8 @@ assert(!ENVIRONMENT_IS_NODE, "node environment detected but not enabled at build
 assert(!ENVIRONMENT_IS_SHELL, "shell environment detected but not enabled at build time.  Add 'shell' to `-sENVIRONMENT` to enable.");
 
 
-
-
-var STACK_ALIGN = 16;
-var POINTER_SIZE = 4;
-
-function getNativeTypeSize(type) {
-  switch (type) {
-    case 'i1': case 'i8': case 'u8': return 1;
-    case 'i16': case 'u16': return 2;
-    case 'i32': case 'u32': return 4;
-    case 'i64': case 'u64': return 8;
-    case 'float': return 4;
-    case 'double': return 8;
-    default: {
-      if (type[type.length - 1] === '*') {
-        return POINTER_SIZE;
-      }
-      if (type[0] === 'i') {
-        const bits = Number(type.substr(1));
-        assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
-        return bits / 8;
-      }
-      return 0;
-    }
-  }
-}
-
-// include: runtime_debug.js
-
-
-function legacyModuleProp(prop, newName) {
-  if (!Object.getOwnPropertyDescriptor(Module, prop)) {
-    Object.defineProperty(Module, prop, {
-      configurable: true,
-      get: function() {
-        abort('Module.' + prop + ' has been replaced with plain ' + newName + ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)');
-      }
-    });
-  }
-}
-
-function ignoredModuleProp(prop) {
-  if (Object.getOwnPropertyDescriptor(Module, prop)) {
-    abort('`Module.' + prop + '` was supplied but `' + prop + '` not included in INCOMING_MODULE_JS_API');
-  }
-}
-
-// forcing the filesystem exports a few things by default
-function isExportedByForceFilesystem(name) {
-  return name === 'FS_createPath' ||
-         name === 'FS_createDataFile' ||
-         name === 'FS_createPreloadedFile' ||
-         name === 'FS_unlink' ||
-         name === 'addRunDependency' ||
-         // The old FS has some functionality that WasmFS lacks.
-         name === 'FS_createLazyFile' ||
-         name === 'FS_createDevice' ||
-         name === 'removeRunDependency';
-}
-
-function missingLibrarySymbol(sym) {
-  if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
-    Object.defineProperty(globalThis, sym, {
-      configurable: true,
-      get: function() {
-        // Can't `abort()` here because it would break code that does runtime
-        // checks.  e.g. `if (typeof SDL === 'undefined')`.
-        var msg = '`' + sym + '` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line';
-        // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
-        // library.js, which means $name for a JS name with no prefix, or name
-        // for a JS name like _name.
-        var librarySymbol = sym;
-        if (!librarySymbol.startsWith('_')) {
-          librarySymbol = '$' + sym;
-        }
-        msg += " (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=" + librarySymbol + ")";
-        if (isExportedByForceFilesystem(sym)) {
-          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
-        }
-        warnOnce(msg);
-        return undefined;
-      }
-    });
-  }
-}
-
-function unexportedRuntimeSymbol(sym) {
-  if (!Object.getOwnPropertyDescriptor(Module, sym)) {
-    Object.defineProperty(Module, sym, {
-      configurable: true,
-      get: function() {
-        var msg = "'" + sym + "' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)";
-        if (isExportedByForceFilesystem(sym)) {
-          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
-        }
-        abort(msg);
-      }
-    });
-  }
-}
-
-// end include: runtime_debug.js
-// JS library code refers to Atomics in the manner used from asm.js, provide
-// the same API here.
-var Atomics_load = Atomics.load;
-var Atomics_store = Atomics.store;
-var Atomics_compareExchange = Atomics.compareExchange;
-
-
-
+// end include: shell.js
+// include: preamble.js
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:
@@ -605,8 +317,6 @@ function assert(condition, text) {
 // builds with assertions.
 
 // include: runtime_strings.js
-
-
 // runtime_strings.js: String related runtime functions that are part of both
 // MINIMAL_RUNTIME and regular runtime.
 
@@ -650,7 +360,7 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
     if ((u0 & 0xF0) == 0xE0) {
       u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
     } else {
-      if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
+      if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte ' + ptrToString(u0) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
       u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
     }
 
@@ -740,7 +450,7 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
       heap[outIdx++] = 0x80 | (u & 63);
     } else {
       if (outIdx + 3 >= endIdx) break;
-      if (u > 0x10FFFF) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
+      if (u > 0x10FFFF) warnOnce('Invalid Unicode code point ' + ptrToString(u) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
       heap[outIdx++] = 0xF0 | (u >> 18);
       heap[outIdx++] = 0x80 | ((u >> 12) & 63);
       heap[outIdx++] = 0x80 | ((u >> 6) & 63);
@@ -798,8 +508,6 @@ function lengthBytesUTF8(str) {
 // Memory management
 
 var HEAP,
-/** @type {!ArrayBuffer} */
-  buffer,
 /** @type {!Int8Array} */
   HEAP8,
 /** @type {!Uint8Array} */
@@ -817,44 +525,35 @@ var HEAP,
 /** @type {!Float64Array} */
   HEAPF64;
 
-if (ENVIRONMENT_IS_PTHREAD) {
-  // Grab imports from the pthread to local scope.
-  buffer = Module['buffer'];
-  // Note that not all runtime fields are imported above
+function updateMemoryViews() {
+  var b = wasmMemory.buffer;
+  Module['HEAP8'] = HEAP8 = new Int8Array(b);
+  Module['HEAP16'] = HEAP16 = new Int16Array(b);
+  Module['HEAP32'] = HEAP32 = new Int32Array(b);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
 }
 
-function updateGlobalBufferAndViews(buf) {
-  buffer = buf;
-  Module['HEAP8'] = HEAP8 = new Int8Array(buf);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
-}
+assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
 
-var STACK_SIZE = 5242880;
-if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
-
-var INITIAL_MEMORY = Module['INITIAL_MEMORY'] || 209715200;legacyModuleProp('INITIAL_MEMORY', 'INITIAL_MEMORY');
-
-assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
-
-// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
        'JS engine does not provide full typed array support');
 
 // In non-standalone/normal mode, we create the memory here.
 // include: runtime_init_memory.js
-
-
 // Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
+
+var INITIAL_MEMORY = Module['INITIAL_MEMORY'] || 209715200;legacyModuleProp('INITIAL_MEMORY', 'INITIAL_MEMORY');
+
+assert(INITIAL_MEMORY >= 65536, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + 65536 + ')');
+
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
-  buffer = Module['buffer'];
 } else {
 
   if (Module['wasmMemory']) {
@@ -878,15 +577,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 }
 
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
+updateMemoryViews();
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
+INITIAL_MEMORY = wasmMemory.buffer.byteLength;
 assert(INITIAL_MEMORY % 65536 === 0);
-updateGlobalBufferAndViews(buffer);
 
 // end include: runtime_init_memory.js
 
@@ -898,12 +594,16 @@ var wasmTable;
 
 // end include: runtime_init_table.js
 // include: runtime_stack_check.js
-
-
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();
   assert((max & 3) == 0);
+  // If the stack ends at address zero we write our cookies 4 bytes into the
+  // stack.  This prevents interference with the (separate) address-zero check
+  // below.
+  if (max == 0) {
+    max += 4;
+  }
   // The stack grow downwards towards _emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
@@ -916,19 +616,23 @@ function writeStackCookie() {
 function checkStackCookie() {
   if (ABORT) return;
   var max = _emscripten_stack_get_end();
+  // See writeStackCookie().
+  if (max == 0) {
+    max += 4;
+  }
   var cookie1 = HEAPU32[((max)>>2)];
   var cookie2 = HEAPU32[(((max)+(4))>>2)];
   if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
-    abort('Stack overflow! Stack cookie has been overwritten at 0x' + max.toString(16) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received 0x' + cookie2.toString(16) + ' 0x' + cookie1.toString(16));
+    abort('Stack overflow! Stack cookie has been overwritten at ' + ptrToString(max) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received ' + ptrToString(cookie2) + ' ' + ptrToString(cookie1));
   }
   // Also test the global address 0 for integrity.
-  if (HEAPU32[0] !== 0x63736d65 /* 'emsc' */) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
+  if (HEAPU32[0] !== 0x63736d65 /* 'emsc' */) {
+    abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
+  }
 }
 
 // end include: runtime_stack_check.js
 // include: runtime_assertions.js
-
-
 // Endianness check
 (function() {
   var h16 = new Int16Array(1);
@@ -952,14 +656,12 @@ function keepRuntimeAlive() {
 
 function preRun() {
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
-
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     while (Module['preRun'].length) {
       addOnPreRun(Module['preRun'].shift());
     }
   }
-
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -1024,8 +726,6 @@ function addOnPostRun(cb) {
 }
 
 // include: runtime_math.js
-
-
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/fround
@@ -1158,15 +858,9 @@ function abort(what) {
   throw e;
 }
 
-// {{MEM_INITIALIZER}}
-
 // include: memoryprofiler.js
-
-
 // end include: memoryprofiler.js
 // include: URIUtils.js
-
-
 // Prefix of data URIs emitted by SINGLE_FILE and related options.
 var dataURIPrefix = 'data:application/octet-stream;base64,';
 
@@ -1248,8 +942,8 @@ function getBinaryPromise() {
 function createWasm() {
   // prepare imports
   var info = {
-    'env': asmLibraryArg,
-    'wasi_snapshot_preview1': asmLibraryArg,
+    'env': wasmImports,
+    'wasi_snapshot_preview1': wasmImports,
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -1275,18 +969,11 @@ function createWasm() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 
-    if (!ENVIRONMENT_IS_WASM_WORKER) {
-    // Instantiation is synchronous in pthreads and we assert on run dependencies.
-    if (!ENVIRONMENT_IS_PTHREAD) {
-      // PTHREAD_POOL_DELAY_LOAD==1 (or no preloaded pool in use): do not wait up for the Workers to
-      // instantiate the Wasm module, but proceed with main() immediately.
-      removeRunDependency('wasm-instantiate');
-    }
-    }
+    PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('wasm-instantiate'));
 
   }
-  // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { addRunDependency('wasm-instantiate'); }
+  // wait for the pthread pool (if any)
+  addRunDependency('wasm-instantiate');
 
   // Prefer streaming instantiation if available.
   // Async compilation can be confusing when an error on the page overwrites Module
@@ -1367,32 +1054,124 @@ function createWasm() {
 var tempDouble;
 var tempI64;
 
+// include: runtime_debug.js
+function legacyModuleProp(prop, newName) {
+  if (!Object.getOwnPropertyDescriptor(Module, prop)) {
+    Object.defineProperty(Module, prop, {
+      configurable: true,
+      get: function() {
+        abort('Module.' + prop + ' has been replaced with plain ' + newName + ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)');
+      }
+    });
+  }
+}
+
+function ignoredModuleProp(prop) {
+  if (Object.getOwnPropertyDescriptor(Module, prop)) {
+    abort('`Module.' + prop + '` was supplied but `' + prop + '` not included in INCOMING_MODULE_JS_API');
+  }
+}
+
+// forcing the filesystem exports a few things by default
+function isExportedByForceFilesystem(name) {
+  return name === 'FS_createPath' ||
+         name === 'FS_createDataFile' ||
+         name === 'FS_createPreloadedFile' ||
+         name === 'FS_unlink' ||
+         name === 'addRunDependency' ||
+         // The old FS has some functionality that WasmFS lacks.
+         name === 'FS_createLazyFile' ||
+         name === 'FS_createDevice' ||
+         name === 'removeRunDependency';
+}
+
+function missingGlobal(sym, msg) {
+  if (typeof globalThis !== 'undefined') {
+    Object.defineProperty(globalThis, sym, {
+      configurable: true,
+      get: function() {
+        warnOnce('`' + sym + '` is not longer defined by emscripten. ' + msg);
+        return undefined;
+      }
+    });
+  }
+}
+
+missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
+
+function missingLibrarySymbol(sym) {
+  if (typeof globalThis !== 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
+    Object.defineProperty(globalThis, sym, {
+      configurable: true,
+      get: function() {
+        // Can't `abort()` here because it would break code that does runtime
+        // checks.  e.g. `if (typeof SDL === 'undefined')`.
+        var msg = '`' + sym + '` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line';
+        // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
+        // library.js, which means $name for a JS name with no prefix, or name
+        // for a JS name like _name.
+        var librarySymbol = sym;
+        if (!librarySymbol.startsWith('_')) {
+          librarySymbol = '$' + sym;
+        }
+        msg += " (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=" + librarySymbol + ")";
+        if (isExportedByForceFilesystem(sym)) {
+          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
+        }
+        warnOnce(msg);
+        return undefined;
+      }
+    });
+  }
+  // Any symbol that is not included from the JS libary is also (by definttion)
+  // not exported on the Module object.
+  unexportedRuntimeSymbol(sym);
+}
+
+function unexportedRuntimeSymbol(sym) {
+  if (!Object.getOwnPropertyDescriptor(Module, sym)) {
+    Object.defineProperty(Module, sym, {
+      configurable: true,
+      get: function() {
+        var msg = "'" + sym + "' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)";
+        if (isExportedByForceFilesystem(sym)) {
+          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
+        }
+        abort(msg);
+      }
+    });
+  }
+}
+
+// end include: runtime_debug.js
 // === Body ===
 
 var ASM_CONSTS = {
-  154980: ($0, $1) => { let audioContext = emscriptenGetAudioObject($0); let audioWorkletNode = emscriptenGetAudioObject($1); if (audioContext.state != 'running') { navigator.mediaDevices.getUserMedia({ audio : { deviceId : undefined, echoCancellation : false, noiseSuppression : false, autoGainControl : false, sampleRate : audioContext.sampleRate } }) .then( function(stream) { var src = Module["audio_src"] = audioContext.createMediaStreamSource(stream); audioContext.resume(); src.connect(audioWorkletNode); audioWorkletNode.connect(audioContext.destination); }, function(err){ console.log("Failed to get mic.")}); } },  
- 155581: ($0) => { let audioContext = emscriptenGetAudioObject($0); if (audioContext.state == 'running') { audioContext.suspend(); } },  
- 155699: () => { if (typeof(AudioContext) !== 'undefined') { return true; } else if (typeof(webkitAudioContext) !== 'undefined') { return true; } return false; },  
- 155846: () => { if ((typeof(navigator.mediaDevices) !== 'undefined') && (typeof(navigator.mediaDevices.getUserMedia) !== 'undefined')) { return true; } else if (typeof(navigator.webkitGetUserMedia) !== 'undefined') { return true; } return false; },  
- 156080: ($0) => { if(typeof(Module['SDL2']) === 'undefined') { Module['SDL2'] = {}; } var SDL2 = Module['SDL2']; if (!$0) { SDL2.audio = {}; } else { SDL2.capture = {}; } if (!SDL2.audioContext) { if (typeof(AudioContext) !== 'undefined') { SDL2.audioContext = new AudioContext(); } else if (typeof(webkitAudioContext) !== 'undefined') { SDL2.audioContext = new webkitAudioContext(); } if (SDL2.audioContext) { autoResumeAudioContext(SDL2.audioContext); } } return SDL2.audioContext === undefined ? -1 : 0; },  
- 156573: () => { var SDL2 = Module['SDL2']; return SDL2.audioContext.sampleRate; },  
- 156641: ($0, $1, $2, $3) => { var SDL2 = Module['SDL2']; var have_microphone = function(stream) { if (SDL2.capture.silenceTimer !== undefined) { clearTimeout(SDL2.capture.silenceTimer); SDL2.capture.silenceTimer = undefined; } SDL2.capture.mediaStreamNode = SDL2.audioContext.createMediaStreamSource(stream); SDL2.capture.scriptProcessorNode = SDL2.audioContext.createScriptProcessor($1, $0, 1); SDL2.capture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) { if ((SDL2 === undefined) || (SDL2.capture === undefined)) { return; } audioProcessingEvent.outputBuffer.getChannelData(0).fill(0.0); SDL2.capture.currentCaptureBuffer = audioProcessingEvent.inputBuffer; dynCall('vi', $2, [$3]); }; SDL2.capture.mediaStreamNode.connect(SDL2.capture.scriptProcessorNode); SDL2.capture.scriptProcessorNode.connect(SDL2.audioContext.destination); SDL2.capture.stream = stream; }; var no_microphone = function(error) { }; SDL2.capture.silenceBuffer = SDL2.audioContext.createBuffer($0, $1, SDL2.audioContext.sampleRate); SDL2.capture.silenceBuffer.getChannelData(0).fill(0.0); var silence_callback = function() { SDL2.capture.currentCaptureBuffer = SDL2.capture.silenceBuffer; dynCall('vi', $2, [$3]); }; SDL2.capture.silenceTimer = setTimeout(silence_callback, ($1 / SDL2.audioContext.sampleRate) * 1000); if ((navigator.mediaDevices !== undefined) && (navigator.mediaDevices.getUserMedia !== undefined)) { navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(have_microphone).catch(no_microphone); } else if (navigator.webkitGetUserMedia !== undefined) { navigator.webkitGetUserMedia({ audio: true, video: false }, have_microphone, no_microphone); } },  
- 158293: ($0, $1, $2, $3) => { var SDL2 = Module['SDL2']; SDL2.audio.scriptProcessorNode = SDL2.audioContext['createScriptProcessor']($1, 0, $0); SDL2.audio.scriptProcessorNode['onaudioprocess'] = function (e) { if ((SDL2 === undefined) || (SDL2.audio === undefined)) { return; } SDL2.audio.currentOutputBuffer = e['outputBuffer']; dynCall('vi', $2, [$3]); }; SDL2.audio.scriptProcessorNode['connect'](SDL2.audioContext['destination']); },  
- 158703: ($0, $1) => { var SDL2 = Module['SDL2']; var numChannels = SDL2.capture.currentCaptureBuffer.numberOfChannels; for (var c = 0; c < numChannels; ++c) { var channelData = SDL2.capture.currentCaptureBuffer.getChannelData(c); if (channelData.length != $1) { throw 'Web Audio capture buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + $1 + ' samples!'; } if (numChannels == 1) { for (var j = 0; j < $1; ++j) { setValue($0 + (j * 4), channelData[j], 'float'); } } else { for (var j = 0; j < $1; ++j) { setValue($0 + (((j * numChannels) + c) * 4), channelData[j], 'float'); } } } },  
- 159308: ($0, $1) => { var SDL2 = Module['SDL2']; var numChannels = SDL2.audio.currentOutputBuffer['numberOfChannels']; for (var c = 0; c < numChannels; ++c) { var channelData = SDL2.audio.currentOutputBuffer['getChannelData'](c); if (channelData.length != $1) { throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + $1 + ' samples!'; } for (var j = 0; j < $1; ++j) { channelData[j] = HEAPF32[$0 + ((j*numChannels + c) << 2) >> 2]; } } },  
- 159788: ($0) => { var SDL2 = Module['SDL2']; if ($0) { if (SDL2.capture.silenceTimer !== undefined) { clearTimeout(SDL2.capture.silenceTimer); } if (SDL2.capture.stream !== undefined) { var tracks = SDL2.capture.stream.getAudioTracks(); for (var i = 0; i < tracks.length; i++) { SDL2.capture.stream.removeTrack(tracks[i]); } SDL2.capture.stream = undefined; } if (SDL2.capture.scriptProcessorNode !== undefined) { SDL2.capture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {}; SDL2.capture.scriptProcessorNode.disconnect(); SDL2.capture.scriptProcessorNode = undefined; } if (SDL2.capture.mediaStreamNode !== undefined) { SDL2.capture.mediaStreamNode.disconnect(); SDL2.capture.mediaStreamNode = undefined; } if (SDL2.capture.silenceBuffer !== undefined) { SDL2.capture.silenceBuffer = undefined } SDL2.capture = undefined; } else { if (SDL2.audio.scriptProcessorNode != undefined) { SDL2.audio.scriptProcessorNode.disconnect(); SDL2.audio.scriptProcessorNode = undefined; } SDL2.audio = undefined; } if ((SDL2.audioContext !== undefined) && (SDL2.audio === undefined) && (SDL2.capture === undefined)) { SDL2.audioContext.close(); SDL2.audioContext = undefined; } },  
- 160960: ($0, $1, $2) => { var w = $0; var h = $1; var pixels = $2; if (!Module['SDL2']) Module['SDL2'] = {}; var SDL2 = Module['SDL2']; if (SDL2.ctxCanvas !== Module['canvas']) { SDL2.ctx = Module['createContext'](Module['canvas'], false, true); SDL2.ctxCanvas = Module['canvas']; } if (SDL2.w !== w || SDL2.h !== h || SDL2.imageCtx !== SDL2.ctx) { SDL2.image = SDL2.ctx.createImageData(w, h); SDL2.w = w; SDL2.h = h; SDL2.imageCtx = SDL2.ctx; } var data = SDL2.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (SDL2.data32Data !== data) { SDL2.data32 = new Int32Array(data.buffer); SDL2.data8 = new Uint8Array(data.buffer); SDL2.data32Data = data; } var data32 = SDL2.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = SDL2.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } SDL2.ctx.putImageData(SDL2.image, 0, 0); },  
- 162429: ($0, $1, $2, $3, $4) => { var w = $0; var h = $1; var hot_x = $2; var hot_y = $3; var pixels = $4; var canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h; var ctx = canvas.getContext("2d"); var image = ctx.createImageData(w, h); var data = image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = (val >> 24) & 0xff; src++; dst += 4; } } else { var data32 = new Int32Array(data.buffer); num = data32.length; data32.set(HEAP32.subarray(src, src + num)); } ctx.putImageData(image, 0, 0); var url = hot_x === 0 && hot_y === 0 ? "url(" + canvas.toDataURL() + "), auto" : "url(" + canvas.toDataURL() + ") " + hot_x + " " + hot_y + ", auto"; var urlBuf = _malloc(url.length + 1); stringToUTF8(url, urlBuf, url.length + 1); return urlBuf; },  
- 163418: ($0) => { if (Module['canvas']) { Module['canvas'].style['cursor'] = UTF8ToString($0); } },  
- 163501: () => { if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; } },  
- 163570: () => { return window.innerWidth; },  
- 163600: () => { return window.innerHeight; }
+  679341: ($0, $1) => { let audioContext = emscriptenGetAudioObject($0); let audioWorkletNode = emscriptenGetAudioObject($1); if (audioContext.state != 'running') { navigator.mediaDevices.getUserMedia({ audio : { deviceId : undefined, echoCancellation : false, noiseSuppression : false, autoGainControl : false, sampleRate : audioContext.sampleRate } }) .then( function(stream) { var src = Module["audio_src"] = audioContext.createMediaStreamSource(stream); audioContext.resume(); src.connect(audioWorkletNode); audioWorkletNode.connect(audioContext.destination); }, function(err){ console.log("Failed to get mic.")}); } },  
+ 679942: ($0) => { let audioContext = emscriptenGetAudioObject($0); if (audioContext.state == 'running') { audioContext.suspend(); } },  
+ 680060: () => { if (typeof(AudioContext) !== 'undefined') { return true; } else if (typeof(webkitAudioContext) !== 'undefined') { return true; } return false; },  
+ 680207: () => { if ((typeof(navigator.mediaDevices) !== 'undefined') && (typeof(navigator.mediaDevices.getUserMedia) !== 'undefined')) { return true; } else if (typeof(navigator.webkitGetUserMedia) !== 'undefined') { return true; } return false; },  
+ 680441: ($0) => { if(typeof(Module['SDL2']) === 'undefined') { Module['SDL2'] = {}; } var SDL2 = Module['SDL2']; if (!$0) { SDL2.audio = {}; } else { SDL2.capture = {}; } if (!SDL2.audioContext) { if (typeof(AudioContext) !== 'undefined') { SDL2.audioContext = new AudioContext(); } else if (typeof(webkitAudioContext) !== 'undefined') { SDL2.audioContext = new webkitAudioContext(); } if (SDL2.audioContext) { autoResumeAudioContext(SDL2.audioContext); } } return SDL2.audioContext === undefined ? -1 : 0; },  
+ 680934: () => { var SDL2 = Module['SDL2']; return SDL2.audioContext.sampleRate; },  
+ 681002: ($0, $1, $2, $3) => { var SDL2 = Module['SDL2']; var have_microphone = function(stream) { if (SDL2.capture.silenceTimer !== undefined) { clearTimeout(SDL2.capture.silenceTimer); SDL2.capture.silenceTimer = undefined; } SDL2.capture.mediaStreamNode = SDL2.audioContext.createMediaStreamSource(stream); SDL2.capture.scriptProcessorNode = SDL2.audioContext.createScriptProcessor($1, $0, 1); SDL2.capture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) { if ((SDL2 === undefined) || (SDL2.capture === undefined)) { return; } audioProcessingEvent.outputBuffer.getChannelData(0).fill(0.0); SDL2.capture.currentCaptureBuffer = audioProcessingEvent.inputBuffer; dynCall('vi', $2, [$3]); }; SDL2.capture.mediaStreamNode.connect(SDL2.capture.scriptProcessorNode); SDL2.capture.scriptProcessorNode.connect(SDL2.audioContext.destination); SDL2.capture.stream = stream; }; var no_microphone = function(error) { }; SDL2.capture.silenceBuffer = SDL2.audioContext.createBuffer($0, $1, SDL2.audioContext.sampleRate); SDL2.capture.silenceBuffer.getChannelData(0).fill(0.0); var silence_callback = function() { SDL2.capture.currentCaptureBuffer = SDL2.capture.silenceBuffer; dynCall('vi', $2, [$3]); }; SDL2.capture.silenceTimer = setTimeout(silence_callback, ($1 / SDL2.audioContext.sampleRate) * 1000); if ((navigator.mediaDevices !== undefined) && (navigator.mediaDevices.getUserMedia !== undefined)) { navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(have_microphone).catch(no_microphone); } else if (navigator.webkitGetUserMedia !== undefined) { navigator.webkitGetUserMedia({ audio: true, video: false }, have_microphone, no_microphone); } },  
+ 682654: ($0, $1, $2, $3) => { var SDL2 = Module['SDL2']; SDL2.audio.scriptProcessorNode = SDL2.audioContext['createScriptProcessor']($1, 0, $0); SDL2.audio.scriptProcessorNode['onaudioprocess'] = function (e) { if ((SDL2 === undefined) || (SDL2.audio === undefined)) { return; } SDL2.audio.currentOutputBuffer = e['outputBuffer']; dynCall('vi', $2, [$3]); }; SDL2.audio.scriptProcessorNode['connect'](SDL2.audioContext['destination']); },  
+ 683064: ($0, $1) => { var SDL2 = Module['SDL2']; var numChannels = SDL2.capture.currentCaptureBuffer.numberOfChannels; for (var c = 0; c < numChannels; ++c) { var channelData = SDL2.capture.currentCaptureBuffer.getChannelData(c); if (channelData.length != $1) { throw 'Web Audio capture buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + $1 + ' samples!'; } if (numChannels == 1) { for (var j = 0; j < $1; ++j) { setValue($0 + (j * 4), channelData[j], 'float'); } } else { for (var j = 0; j < $1; ++j) { setValue($0 + (((j * numChannels) + c) * 4), channelData[j], 'float'); } } } },  
+ 683669: ($0, $1) => { var SDL2 = Module['SDL2']; var numChannels = SDL2.audio.currentOutputBuffer['numberOfChannels']; for (var c = 0; c < numChannels; ++c) { var channelData = SDL2.audio.currentOutputBuffer['getChannelData'](c); if (channelData.length != $1) { throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + $1 + ' samples!'; } for (var j = 0; j < $1; ++j) { channelData[j] = HEAPF32[$0 + ((j*numChannels + c) << 2) >> 2]; } } },  
+ 684149: ($0) => { var SDL2 = Module['SDL2']; if ($0) { if (SDL2.capture.silenceTimer !== undefined) { clearTimeout(SDL2.capture.silenceTimer); } if (SDL2.capture.stream !== undefined) { var tracks = SDL2.capture.stream.getAudioTracks(); for (var i = 0; i < tracks.length; i++) { SDL2.capture.stream.removeTrack(tracks[i]); } SDL2.capture.stream = undefined; } if (SDL2.capture.scriptProcessorNode !== undefined) { SDL2.capture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {}; SDL2.capture.scriptProcessorNode.disconnect(); SDL2.capture.scriptProcessorNode = undefined; } if (SDL2.capture.mediaStreamNode !== undefined) { SDL2.capture.mediaStreamNode.disconnect(); SDL2.capture.mediaStreamNode = undefined; } if (SDL2.capture.silenceBuffer !== undefined) { SDL2.capture.silenceBuffer = undefined } SDL2.capture = undefined; } else { if (SDL2.audio.scriptProcessorNode != undefined) { SDL2.audio.scriptProcessorNode.disconnect(); SDL2.audio.scriptProcessorNode = undefined; } SDL2.audio = undefined; } if ((SDL2.audioContext !== undefined) && (SDL2.audio === undefined) && (SDL2.capture === undefined)) { SDL2.audioContext.close(); SDL2.audioContext = undefined; } },  
+ 685321: ($0, $1, $2) => { var w = $0; var h = $1; var pixels = $2; if (!Module['SDL2']) Module['SDL2'] = {}; var SDL2 = Module['SDL2']; if (SDL2.ctxCanvas !== Module['canvas']) { SDL2.ctx = Module['createContext'](Module['canvas'], false, true); SDL2.ctxCanvas = Module['canvas']; } if (SDL2.w !== w || SDL2.h !== h || SDL2.imageCtx !== SDL2.ctx) { SDL2.image = SDL2.ctx.createImageData(w, h); SDL2.w = w; SDL2.h = h; SDL2.imageCtx = SDL2.ctx; } var data = SDL2.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (SDL2.data32Data !== data) { SDL2.data32 = new Int32Array(data.buffer); SDL2.data8 = new Uint8Array(data.buffer); SDL2.data32Data = data; } var data32 = SDL2.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = SDL2.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } SDL2.ctx.putImageData(SDL2.image, 0, 0); },  
+ 686790: ($0, $1, $2, $3, $4) => { var w = $0; var h = $1; var hot_x = $2; var hot_y = $3; var pixels = $4; var canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h; var ctx = canvas.getContext("2d"); var image = ctx.createImageData(w, h); var data = image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = (val >> 24) & 0xff; src++; dst += 4; } } else { var data32 = new Int32Array(data.buffer); num = data32.length; data32.set(HEAP32.subarray(src, src + num)); } ctx.putImageData(image, 0, 0); var url = hot_x === 0 && hot_y === 0 ? "url(" + canvas.toDataURL() + "), auto" : "url(" + canvas.toDataURL() + ") " + hot_x + " " + hot_y + ", auto"; var urlBuf = _malloc(url.length + 1); stringToUTF8(url, urlBuf, url.length + 1); return urlBuf; },  
+ 687779: ($0) => { if (Module['canvas']) { Module['canvas'].style['cursor'] = UTF8ToString($0); } },  
+ 687862: () => { if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; } },  
+ 687931: () => { return window.innerWidth; },  
+ 687961: () => { return window.innerHeight; }
 };
+function upload(accept_types,callback,nullptr) { globalThis.open_file = function(e) { const file_reader = new FileReader(); file_reader.onload = (event) => { const uint8Arr = new Uint8Array(event.target.result); const num_bytes = uint8Arr.length * uint8Arr.BYTES_PER_ELEMENT; const data_ptr = _malloc(num_bytes); const data_on_heap = new Uint8Array(Module.HEAPU8.buffer, data_ptr, num_bytes); data_on_heap.set(uint8Arr); var callback_data = callback_data || 0; const res = Module.ccall('load_file_return', 'number', [ 'string', 'string', 'number', 'number', 'number', 'number' ], [ event.target.filename, event.target.mime_type, data_on_heap.byteOffset, uint8Arr.length, callback, callback_data ]); _free(data_ptr); }; file_reader.filename = e.target.files[0].name; file_reader.mime_type = e.target.files[0].type; file_reader.readAsArrayBuffer(e.target.files[0]); console.log(e.target.files); }; var file_selector = document.createElement('input'); file_selector.setAttribute('type', 'file'); file_selector.setAttribute('onchange', 'open_file(event)'); file_selector.setAttribute('accept', UTF8ToString(accept_types)); file_selector.click(); }
+function download(filename,mime_type,buffer,buffer_size) { var a = document.createElement('a'); a.download = UTF8ToString(filename); var dataArray = new Uint8Array(new Uint8Array(Module.HEAPU8.buffer, buffer, buffer_size)); a.href = URL.createObjectURL(new Blob([dataArray],{type: UTF8ToString(mime_type) })); a.click(); }
 function emsdbg(text) { console.log(text); }
 
 
 
-
+// end include: preamble.js
 
   /** @constructor */
   function ExitStatus(status) {
@@ -1401,6 +1180,8 @@ function emsdbg(text) { console.log(text); }
       this.status = status;
     }
 
+  
+  
   function killThread(pthread_ptr) {
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! killThread() can only ever be called from main application thread!');
       assert(pthread_ptr, 'Internal Error! Null pthread_ptr in killThread!');
@@ -1457,17 +1238,12 @@ function emsdbg(text) { console.log(text); }
           'arg': threadParams.arg,
           'pthread_ptr': threadParams.pthread_ptr,
       };
-      worker.runPthread = () => {
-        // Ask the worker to start executing its pthread entry point function.
-        msg.time = performance.now();
-        worker.postMessage(msg, threadParams.transferList);
-      };
-      if (worker.loaded) {
-        worker.runPthread();
-        delete worker.runPthread;
-      }
+      // Ask the worker to start executing its pthread entry point function.
+      worker.postMessage(msg, threadParams.transferList);
       return 0;
     }
+  
+  
   
   var PATH = {isAbs:(path) => path.charAt(0) === '/',splitPath:(filename) => {
         var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
@@ -1544,6 +1320,8 @@ function emsdbg(text) { console.log(text); }
       return () => abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
     }
   
+  
+  
   var PATH_FS = {resolve:function() {
         var resolvedPath = '',
           resolvedAbsolute = false;
@@ -1594,6 +1372,7 @@ function emsdbg(text) { console.log(text); }
         outputParts = outputParts.concat(toParts.slice(samePartsLength));
         return outputParts.join('/');
       }};
+  
   
   /** @type {function(string, boolean=, number=)} */
   function intArrayFromString(stringy, dontAddNull, length) {
@@ -1723,6 +1502,8 @@ function emsdbg(text) { console.log(text); }
             tty.output = [];
           }
         }}};
+  
+  
   
   function alignMemory(size, alignment) {
       assert(alignment, "alignment argument is required");
@@ -2004,9 +1785,9 @@ function emsdbg(text) { console.log(text); }
           var allocated;
           var contents = stream.node.contents;
           // Only make a new copy when MAP_PRIVATE is specified.
-          if (!(flags & 2) && contents.buffer === buffer) {
-            // We can't emulate MAP_SHARED when the file is not backed by the buffer
-            // we're mapping to (e.g. the HEAP buffer).
+          if (!(flags & 2) && contents.buffer === HEAP8.buffer) {
+            // We can't emulate MAP_SHARED when the file is not backed by the
+            // buffer we're mapping to (e.g. the HEAP buffer).
             allocated = false;
             ptr = contents.byteOffset;
           } else {
@@ -2049,16 +1830,11 @@ function emsdbg(text) { console.log(text); }
       if (dep) addRunDependency(dep);
     }
   
+  
   var ERRNO_MESSAGES = {0:"Success",1:"Arg list too long",2:"Permission denied",3:"Address already in use",4:"Address not available",5:"Address family not supported by protocol family",6:"No more processes",7:"Socket already connected",8:"Bad file number",9:"Trying to read unreadable message",10:"Mount device busy",11:"Operation canceled",12:"No children",13:"Connection aborted",14:"Connection refused",15:"Connection reset by peer",16:"File locking deadlock error",17:"Destination address required",18:"Math arg out of domain of func",19:"Quota exceeded",20:"File exists",21:"Bad address",22:"File too large",23:"Host is unreachable",24:"Identifier removed",25:"Illegal byte sequence",26:"Connection already in progress",27:"Interrupted system call",28:"Invalid argument",29:"I/O error",30:"Socket is already connected",31:"Is a directory",32:"Too many symbolic links",33:"Too many open files",34:"Too many links",35:"Message too long",36:"Multihop attempted",37:"File or path name too long",38:"Network interface is not configured",39:"Connection reset by network",40:"Network is unreachable",41:"Too many open files in system",42:"No buffer space available",43:"No such device",44:"No such file or directory",45:"Exec format error",46:"No record locks available",47:"The link has been severed",48:"Not enough core",49:"No message of desired type",50:"Protocol not available",51:"No space left on device",52:"Function not implemented",53:"Socket is not connected",54:"Not a directory",55:"Directory not empty",56:"State not recoverable",57:"Socket operation on non-socket",59:"Not a typewriter",60:"No such device or address",61:"Value too large for defined data type",62:"Previous owner died",63:"Not super-user",64:"Broken pipe",65:"Protocol error",66:"Unknown protocol",67:"Protocol wrong type for socket",68:"Math result not representable",69:"Read only file system",70:"Illegal seek",71:"No such process",72:"Stale file handle",73:"Connection timed out",74:"Text file busy",75:"Cross-device link",100:"Device not a stream",101:"Bad font file fmt",102:"Invalid slot",103:"Invalid request code",104:"No anode",105:"Block device required",106:"Channel number out of range",107:"Level 3 halted",108:"Level 3 reset",109:"Link number out of range",110:"Protocol driver not attached",111:"No CSI structure available",112:"Level 2 halted",113:"Invalid exchange",114:"Invalid request descriptor",115:"Exchange full",116:"No data (for no delay io)",117:"Timer expired",118:"Out of streams resources",119:"Machine is not on the network",120:"Package not installed",121:"The object is remote",122:"Advertise error",123:"Srmount error",124:"Communication error on send",125:"Cross mount point (not really error)",126:"Given log. name not unique",127:"f.d. invalid for this operation",128:"Remote address changed",129:"Can   access a needed shared lib",130:"Accessing a corrupted shared lib",131:".lib section in a.out corrupted",132:"Attempting to link in too many libs",133:"Attempting to exec a shared library",135:"Streams pipe error",136:"Too many users",137:"Socket type not supported",138:"Not supported",139:"Protocol family not supported",140:"Can't send after socket shutdown",141:"Too many references",142:"Host is down",148:"No medium (in tape drive)",156:"Level 2 not synchronized"};
   
   var ERRNO_CODES = {};
   
-  function withStackSave(f) {
-      var stack = stackSave();
-      var ret = f();
-      stackRestore(stack);
-      return ret;
-    }
   function demangle(func) {
       warnOnce('warning: build with -sDEMANGLE_SUPPORT to link in libcxxabi demangling');
       return func;
@@ -3556,9 +3332,7 @@ function emsdbg(text) { console.log(text); }
         return window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       },DB_NAME:() => {
         return 'EM_FS_' + window.location.pathname;
-      },DB_VERSION:20,DB_STORE_NAME:"FILE_DATA",saveFilesToDB:(paths, onload, onerror) => {
-        onload = onload || (() => {});
-        onerror = onerror || (() => {});
+      },DB_VERSION:20,DB_STORE_NAME:"FILE_DATA",saveFilesToDB:(paths, onload = (() => {}), onerror = (() => {})) => {
         var indexedDB = FS.indexedDB();
         try {
           var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -3586,9 +3360,7 @@ function emsdbg(text) { console.log(text); }
           transaction.onerror = onerror;
         };
         openRequest.onerror = onerror;
-      },loadFilesFromDB:(paths, onload, onerror) => {
-        onload = onload || (() => {});
-        onerror = onerror || (() => {});
+      },loadFilesFromDB:(paths, onload = (() => {}), onerror = (() => {})) => {
         var indexedDB = FS.indexedDB();
         try {
           var openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);
@@ -3676,12 +3448,15 @@ function emsdbg(text) { console.log(text); }
         (tempI64 = [stat.size>>>0,(tempDouble=stat.size,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(40))>>2)] = tempI64[0],HEAP32[(((buf)+(44))>>2)] = tempI64[1]);
         HEAP32[(((buf)+(48))>>2)] = 4096;
         HEAP32[(((buf)+(52))>>2)] = stat.blocks;
-        (tempI64 = [Math.floor(stat.atime.getTime() / 1000)>>>0,(tempDouble=Math.floor(stat.atime.getTime() / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(56))>>2)] = tempI64[0],HEAP32[(((buf)+(60))>>2)] = tempI64[1]);
-        HEAPU32[(((buf)+(64))>>2)] = 0;
-        (tempI64 = [Math.floor(stat.mtime.getTime() / 1000)>>>0,(tempDouble=Math.floor(stat.mtime.getTime() / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(72))>>2)] = tempI64[0],HEAP32[(((buf)+(76))>>2)] = tempI64[1]);
-        HEAPU32[(((buf)+(80))>>2)] = 0;
-        (tempI64 = [Math.floor(stat.ctime.getTime() / 1000)>>>0,(tempDouble=Math.floor(stat.ctime.getTime() / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(88))>>2)] = tempI64[0],HEAP32[(((buf)+(92))>>2)] = tempI64[1]);
-        HEAPU32[(((buf)+(96))>>2)] = 0;
+        var atime = stat.atime.getTime();
+        var mtime = stat.mtime.getTime();
+        var ctime = stat.ctime.getTime();
+        (tempI64 = [Math.floor(atime / 1000)>>>0,(tempDouble=Math.floor(atime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(56))>>2)] = tempI64[0],HEAP32[(((buf)+(60))>>2)] = tempI64[1]);
+        HEAPU32[(((buf)+(64))>>2)] = (atime % 1000) * 1000;
+        (tempI64 = [Math.floor(mtime / 1000)>>>0,(tempDouble=Math.floor(mtime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(72))>>2)] = tempI64[0],HEAP32[(((buf)+(76))>>2)] = tempI64[1]);
+        HEAPU32[(((buf)+(80))>>2)] = (mtime % 1000) * 1000;
+        (tempI64 = [Math.floor(ctime / 1000)>>>0,(tempDouble=Math.floor(ctime / 1000),(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(88))>>2)] = tempI64[0],HEAP32[(((buf)+(92))>>2)] = tempI64[1]);
+        HEAPU32[(((buf)+(96))>>2)] = (ctime % 1000) * 1000;
         (tempI64 = [stat.ino>>>0,(tempDouble=stat.ino,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[(((buf)+(104))>>2)] = tempI64[0],HEAP32[(((buf)+(108))>>2)] = tempI64[1]);
         return 0;
       },doMsync:function(addr, stream, len, flags, offset) {
@@ -3751,6 +3526,7 @@ function emsdbg(text) { console.log(text); }
   var _exit = exitJS;
   
   function ptrToString(ptr) {
+      assert(typeof ptr === 'number');
       return '0x' + ptr.toString(16).padStart(8, '0');
     }
   
@@ -3763,10 +3539,19 @@ function emsdbg(text) { console.log(text); }
       if (e instanceof ExitStatus || e == 'unwind') {
         return EXITSTATUS;
       }
+      checkStackCookie();
+      if (e instanceof WebAssembly.RuntimeError) {
+        if (_emscripten_stack_get_current() <= 0) {
+          err('Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to ' + 65536 + ')');
+        }
+      }
       quit_(1, e);
     }
+  
   var PThread = {unusedWorkers:[],runningWorkers:[],tlsInitFunctions:[],pthreads:{},init:function() {
-        if (ENVIRONMENT_IS_PTHREAD) {
+        if (ENVIRONMENT_IS_PTHREAD
+          || ENVIRONMENT_IS_AUDIO_WORKLET
+          ) {
           PThread.initWorker();
         } else {
           PThread.initMainThread();
@@ -3828,7 +3613,7 @@ function emsdbg(text) { console.log(text); }
         // Call thread init functions (these are the _emscripten_tls_init for each
         // module loaded.
         PThread.tlsInitFunctions.forEach((f) => f());
-      },loadWasmModuleToWorker:function(worker, onFinishedLoading) {
+      },loadWasmModuleToWorker:(worker) => new Promise((onFinishedLoading) => {
         worker.onmessage = (e) => {
           var d = e['data'];
           var cmd = d['cmd'];
@@ -3862,12 +3647,7 @@ function emsdbg(text) { console.log(text); }
             cancelThread(d['thread']);
           } else if (cmd === 'loaded') {
             worker.loaded = true;
-            if (onFinishedLoading) onFinishedLoading(worker);
-            // If this Worker is already pending to start running a thread, launch the thread now
-            if (worker.runPthread) {
-              worker.runPthread();
-              delete worker.runPthread;
-            }
+            onFinishedLoading(worker);
           } else if (cmd === 'print') {
             out('Thread ' + d['threadId'] + ': ' + d['text']);
           } else if (cmd === 'printErr') {
@@ -3931,14 +3711,19 @@ function emsdbg(text) { console.log(text); }
           'wasmMemory': wasmMemory,
           'wasmModule': wasmModule,
         });
+      }),loadWasmModuleToAllWorkers:function(onMaybeReady) {
+        onMaybeReady();
       },allocateUnusedWorker:function() {
+        var worker;
         // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
         // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
         // to the main html file is loaded.
         var pthreadMainJs = locateFile('hotwire.worker.js');
-        PThread.unusedWorkers.push(new Worker(pthreadMainJs));
+        worker = new Worker(pthreadMainJs);
+      PThread.unusedWorkers.push(worker);
       },getNewWorker:function() {
         if (PThread.unusedWorkers.length == 0) {
+  // PTHREAD_POOL_SIZE_STRICT should show a warning and, if set to level `2`, return from the function.
           PThread.allocateUnusedWorker();
           PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
         }
@@ -3985,6 +3770,7 @@ function emsdbg(text) { console.log(text); }
     }
   
   var wasmTableMirror = [];
+  
   function getWasmTableEntry(funcPtr) {
       var func = wasmTableMirror[funcPtr];
       if (!func) {
@@ -3994,6 +3780,7 @@ function emsdbg(text) { console.log(text); }
       assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
       return func;
     }
+  
   /** @param {Object=} args */
   function dynCall(sig, ptr, args) {
       // Without WASM_BIGINT support we cannot directly call function with i64 as
@@ -4032,6 +3819,8 @@ function emsdbg(text) { console.log(text); }
   Module["establishStackSpace"] = establishStackSpace;
 
   
+  
+  
   function exitOnMainThread(returnCode) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(2, 0, returnCode);
@@ -4066,6 +3855,8 @@ function emsdbg(text) { console.log(text); }
       return null;
     }
 
+  
+  
   function invokeEntryPoint(ptr, arg) {
       // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
       // Native codebases sometimes spawn threads with other thread entry point
@@ -4085,6 +3876,7 @@ function emsdbg(text) { console.log(text); }
       }
     }
   Module["invokeEntryPoint"] = invokeEntryPoint;
+
 
   function registerTLSInit(tlsInitFunc) {
       PThread.tlsInitFunctions.push(tlsInitFunc);
@@ -4125,11 +3917,6 @@ function emsdbg(text) { console.log(text); }
 
   function ___call_sighandler(fp, sig) {
       getWasmTableEntry(fp)(sig);
-    }
-
-  function ___cxa_allocate_exception(size) {
-      // Thrown object is prepended by exception metadata block
-      return _malloc(size + 24) + 24;
     }
 
   /** @constructor */
@@ -4256,13 +4043,20 @@ function emsdbg(text) { console.log(text); }
       else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
     }
 
+  
+  
   function ___handle_stack_overflow(requested) {
       requested = requested >>> 0;
-      abort('stack overflow (Attempt to set SP to 0x' + requested.toString(16) +
-            ', with stack limits [0x' + _emscripten_stack_get_end().toString(16) +
-            ' - 0x' + _emscripten_stack_get_base().toString(16) + '])');
+      var base = _emscripten_stack_get_base();
+      var end = _emscripten_stack_get_end();
+      abort('stack overflow (Attempt to set SP to ' + ptrToString(requested) +
+            ', with stack limits [' + ptrToString(end) + ' - ' + ptrToString(base) +
+            ']). If you require more stack space build with -sSTACK_SIZE=<bytes>');
     }
 
+  
+  
+  
   
   function pthreadCreateProxied(pthread_ptr, attr, startRoutine, arg) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -4271,6 +4065,7 @@ function emsdbg(text) { console.log(text); }
       return ___pthread_create_js(pthread_ptr, attr, startRoutine, arg);
     
   }
+  
   
   function ___pthread_create_js(pthread_ptr, attr, startRoutine, arg) {
       if (typeof SharedArrayBuffer == 'undefined') {
@@ -4320,6 +4115,7 @@ function emsdbg(text) { console.log(text); }
       HEAP32[((___errno_location())>>2)] = value;
       return value;
     }
+  
   
   function ___syscall_fcntl64(fd, cmd, varargs) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -4468,12 +4264,21 @@ function emsdbg(text) { console.log(text); }
   function __dlinit(main_dso_handle) {}
 
   var dlopenMissingError =  'To use dlopen, you need enable dynamic linking, see https://github.com/emscripten-core/emscripten/wiki/Linking';
-  function __dlopen_js(filename, flag) {
+  function __dlopen_js(handle) {
+      abort(dlopenMissingError);
+    }
+
+  function __dlsym_catchup_js(handle, symbolIndex) {
       abort(dlopenMissingError);
     }
 
   function __emscripten_default_pthread_stack_size() {
-      return 2097152;
+      return 65536;
+    }
+
+  function __emscripten_err(str) {
+      assert(typeof str == 'number');
+      err(UTF8ToString(str));
     }
 
   var nowIsMonotonic = true;;
@@ -4498,6 +4303,7 @@ function emsdbg(text) { console.log(text); }
                               0);
     }
   Module["executeNotifiedProxyingQueue"] = executeNotifiedProxyingQueue;
+  
   function __emscripten_notify_task_queue(targetThreadId, currThreadId, mainThreadId, queue) {
       if (targetThreadId == currThreadId) {
         setTimeout(() => executeNotifiedProxyingQueue(queue));
@@ -4569,6 +4375,8 @@ function emsdbg(text) { console.log(text); }
       abort('native code called abort()');
     }
 
+
+  
   function runtimeKeepalivePush() {
     }
   function _emscripten_set_main_loop_timing(mode, value) {
@@ -4627,16 +4435,12 @@ function emsdbg(text) { console.log(text); }
       return 0;
     }
   
-  var _emscripten_get_now;if (ENVIRONMENT_IS_PTHREAD) {
-    _emscripten_get_now = () => performance.now() - Module['__performance_now_clock_drift'];
-  } else if (typeof performance != 'undefined' && performance.now) {
-    _emscripten_get_now = () => performance.now();
+  var _emscripten_get_now;if (typeof performance != 'undefined' && performance.now) {
+    _emscripten_get_now = () => performance.timeOrigin + performance.now();
   } else {
     _emscripten_get_now = Date.now;
   }
   
-  function maybeExit() {
-    }
   
   function runtimeKeepalivePop() {
     }
@@ -4655,7 +4459,6 @@ function emsdbg(text) { console.log(text); }
       function checkIsRunning() {
         if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
           runtimeKeepalivePop();
-          maybeExit();
           return false;
         }
         return true;
@@ -4750,12 +4553,12 @@ function emsdbg(text) { console.log(text); }
       }
       try {
         func();
-        if (ENVIRONMENT_IS_PTHREAD)
-          maybeExit();
       } catch (e) {
         handleException(e);
       }
     }
+  
+  
   
   /** @param {number=} timeout */
   function safeSetTimeout(func, timeout) {
@@ -4765,6 +4568,11 @@ function emsdbg(text) { console.log(text); }
         callUserCallback(func);
       }, timeout);
     }
+  
+  
+  
+  
+  
   var Browser = {mainLoop:{running:false,scheduler:null,method:"",currentlyRunningMainloop:0,func:null,arg:0,timingMode:0,timingValue:0,currentFrameNumber:0,queue:[],pause:function() {
           Browser.mainLoop.scheduler = null;
           // Incrementing this signals the previous main loop that it's now become old, and it must return.
@@ -5357,6 +5165,7 @@ function emsdbg(text) { console.log(text); }
           }
         }
       }};
+  
   var EGL = {errorCode:12288,defaultDisplayInitialized:false,currentContext:0,currentReadSurface:0,currentDrawSurface:0,contextAttributes:{alpha:false,depth:false,stencil:false,antialias:false},stringCache:{},setErrorCode:function(code) {
         EGL.errorCode = code;
       },chooseConfig:function(display, attribList, config, config_size, numConfigs) {
@@ -5434,6 +5243,7 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   function __webgl_enable_ANGLE_instanced_arrays(ctx) {
       // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
       var ext = ctx.getExtension('ANGLE_instanced_arrays');
@@ -5470,6 +5280,7 @@ function emsdbg(text) { console.log(text); }
       // Closure is expected to be allowed to minify the '.multiDrawWebgl' property, so not accessing it quoted.
       return !!(ctx.multiDrawWebgl = ctx.getExtension('WEBGL_multi_draw'));
     }
+  
   var GL = {counter:1,buffers:[],programs:[],framebuffers:[],renderbuffers:[],textures:[],shaders:[],vaos:[],contexts:{},offscreenCanvases:{},queries:[],stringCache:{},unpackAlignment:4,recordError:function recordError(errorCode) {
         if (!GL.lastError) {
           GL.lastError = errorCode;
@@ -5504,7 +5315,7 @@ function emsdbg(text) { console.log(text); }
           canvas.getContext = fixedGetContext;
         }
   
-        var ctx = 
+        var ctx =
           (canvas.getContext("webgl", webGLContextAttributes)
             // https://caniuse.com/#feat=webgl
             );
@@ -5579,6 +5390,7 @@ function emsdbg(text) { console.log(text); }
           }
         });
       }};
+  
   
   function _eglCreateContext(display, config, hmm, contextAttribs) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -5657,6 +5469,7 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   
   function _eglDestroyContext(display, context) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -5882,6 +5695,7 @@ function emsdbg(text) { console.log(text); }
   
 
   
+  
   function _eglMakeCurrent(display, draw, read, context) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(17, 1, display, draw, read, context);
@@ -5917,6 +5731,7 @@ function emsdbg(text) { console.log(text); }
       if (ret) stringToUTF8Array(str, HEAP8, ret, size);
       return ret;
     }
+  
   
   function _eglQueryString(display, name) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -5971,6 +5786,7 @@ function emsdbg(text) { console.log(text); }
   
 
   
+  
   function _eglSwapInterval(display, interval) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(20, 1, display, interval);
@@ -6008,6 +5824,7 @@ function emsdbg(text) { console.log(text); }
   
 
   
+  
   function _eglWaitClient() {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(22, 1);
@@ -6030,13 +5847,13 @@ function emsdbg(text) { console.log(text); }
   }
   
 
-  var readAsmConstArgsArray = [];
-  function readAsmConstArgs(sigPtr, buf) {
-      // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
-      assert(Array.isArray(readAsmConstArgsArray));
+  var readEmAsmArgsArray = [];
+  function readEmAsmArgs(sigPtr, buf) {
+      // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
+      assert(Array.isArray(readEmAsmArgsArray));
       // The input buffer is allocated on the stack, so it must be stack-aligned.
       assert(buf % 16 == 0);
-      readAsmConstArgsArray.length = 0;
+      readEmAsmArgsArray.length = 0;
       var ch;
       // Most arguments are i32s, so shift the buffer pointer so it is a plain
       // index into HEAP32.
@@ -6044,33 +5861,36 @@ function emsdbg(text) { console.log(text); }
       while (ch = HEAPU8[sigPtr++]) {
         var chr = String.fromCharCode(ch);
         var validChars = ['d', 'f', 'i'];
-        assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
+        assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readEmAsmArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
         // Floats are always passed as doubles, and doubles and int64s take up 8
         // bytes (two 32-bit slots) in memory, align reads to these:
         buf += (ch != 105/*i*/) & buf;
-        readAsmConstArgsArray.push(
+        readEmAsmArgsArray.push(
           ch == 105/*i*/ ? HEAP32[buf] :
          HEAPF64[buf++ >> 1]
         );
         ++buf;
       }
-      return readAsmConstArgsArray;
+      return readEmAsmArgsArray;
     }
-  function _emscripten_asm_const_int(code, sigPtr, argbuf) {
-      var args = readAsmConstArgs(sigPtr, argbuf);
+  function runEmAsmFunction(code, sigPtr, argbuf) {
+      var args = readEmAsmArgs(sigPtr, argbuf);
       if (!ASM_CONSTS.hasOwnProperty(code)) abort('No EM_ASM constant found at address ' + code);
       return ASM_CONSTS[code].apply(null, args);
     }
+  function _emscripten_asm_const_int(code, sigPtr, argbuf) {
+      return runEmAsmFunction(code, sigPtr, argbuf);
+    }
 
-  function mainThreadEM_ASM(code, sigPtr, argbuf, sync) {
-      var args = readAsmConstArgs(sigPtr, argbuf);
+  function runMainThreadEmAsm(code, sigPtr, argbuf, sync) {
+      var args = readEmAsmArgs(sigPtr, argbuf);
       if (ENVIRONMENT_IS_PTHREAD) {
         // EM_ASM functions are variadic, receiving the actual arguments as a buffer
         // in memory. the last parameter (argBuf) points to that data. We need to
         // always un-variadify that, *before proxying*, as in the async case this
         // is a stack allocation that LLVM made, which may go away before the main
         // thread gets the message. For that reason we handle proxying *after* the
-        // call to readAsmConstArgs, and therefore we do that manually here instead
+        // call to readEmAsmArgs, and therefore we do that manually here instead
         // of using __proxy. (And dor simplicity, do the same in the sync
         // case as well, even though it's not strictly necessary, to keep the two
         // code paths as similar as possible on both sides.)
@@ -6082,9 +5902,10 @@ function emsdbg(text) { console.log(text); }
       return ASM_CONSTS[code].apply(null, args);
     }
   function _emscripten_asm_const_int_sync_on_main_thread(code, sigPtr, argbuf) {
-      return mainThreadEM_ASM(code, sigPtr, argbuf, 1);
+      return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
     }
 
+  
   function _emscripten_check_blocking_allowed() {
   
       if (ENVIRONMENT_IS_WORKER) return; // Blocking in a worker/pthread is fine.
@@ -6182,6 +6003,12 @@ function emsdbg(text) { console.log(text); }
       return Date.now();
     }
 
+  function withStackSave(f) {
+      var stack = stackSave();
+      var ret = f();
+      stackRestore(stack);
+      return ret;
+    }
   var JSEvents = {inEventHandler:0,removeAllEventListeners:function() {
         for (var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
           JSEvents._removeHandler(i);
@@ -6303,6 +6130,10 @@ function emsdbg(text) { console.log(text); }
   
   var currentFullscreenStrategy = {};
   
+  
+  
+  
+  
   function maybeCStringToJsString(cString) {
       // "cString > 2" checks if the input is a number, and isn't of the special
       // values we accept here, EMSCRIPTEN_EVENT_TARGET_* (which map to 0, 1, 2).
@@ -6338,6 +6169,7 @@ function emsdbg(text) { console.log(text); }
      return _emscripten_get_canvas_element_size_calling_thread(target, width, height); 
   }
   
+  
   function _emscripten_get_canvas_element_size(target, width, height) {
       var canvas = findCanvasEventTarget(target);
       if (canvas) {
@@ -6345,6 +6177,7 @@ function emsdbg(text) { console.log(text); }
       }
       return _emscripten_get_canvas_element_size_main_thread(target, width, height);
     }
+  
   function getCanvasElementSize(target) {
       return withStackSave(function() {
         var w = stackAlloc(8);
@@ -6357,6 +6190,8 @@ function emsdbg(text) { console.log(text); }
         return size;
       });
     }
+  
+  
   
   function _emscripten_set_canvas_element_size_calling_thread(target, width, height) {
       var canvas = findCanvasEventTarget(target);
@@ -6389,6 +6224,7 @@ function emsdbg(text) { console.log(text); }
      return _emscripten_set_canvas_element_size_calling_thread(target, width, height); 
   }
   
+  
   function _emscripten_set_canvas_element_size(target, width, height) {
       var canvas = findCanvasEventTarget(target);
       if (canvas) {
@@ -6396,6 +6232,7 @@ function emsdbg(text) { console.log(text); }
       }
       return _emscripten_set_canvas_element_size_main_thread(target, width, height);
     }
+  
   function setCanvasElementSize(target, width, height) {
       if (!target.controlTransferredOffscreen) {
         target.width = width;
@@ -6410,6 +6247,7 @@ function emsdbg(text) { console.log(text); }
         });
       }
     }
+  
   function registerRestoreOldStyle(canvas) {
       var canvasSize = getCanvasElementSize(canvas);
       var oldWidth = canvasSize[0];
@@ -6435,7 +6273,6 @@ function emsdbg(text) { console.log(text); }
       function restoreOldStyle() {
         var fullscreenElement = document.fullscreenElement
           || document.webkitFullscreenElement
-          || document.msFullscreenElement
           ;
         if (!fullscreenElement) {
           document.removeEventListener('fullscreenchange', restoreOldStyle);
@@ -6482,11 +6319,13 @@ function emsdbg(text) { console.log(text); }
       return restoreOldStyle;
     }
   
+  
   function setLetterbox(element, topBottom, leftRight) {
         // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
         element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
         element.style.paddingTop = element.style.paddingBottom = topBottom + 'px';
     }
+  
   
   function getBoundingClientRect(e) {
       return specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
@@ -6547,6 +6386,7 @@ function emsdbg(text) { console.log(text); }
       }
       return restoreOldStyle;
     }
+  
   function JSEvents_requestFullscreen(target, strategy) {
       // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
       if (strategy.scaleMode != 0 || strategy.canvasResolutionScaleMode != 0) {
@@ -6572,6 +6412,7 @@ function emsdbg(text) { console.log(text); }
       return 0;
     }
   
+  
   function _emscripten_exit_fullscreen() {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(24, 1);
@@ -6594,16 +6435,14 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   function requestPointerLock(target) {
       if (target.requestPointerLock) {
         target.requestPointerLock();
-      } else if (target.msRequestPointerLock) {
-        target.msRequestPointerLock();
       } else {
         // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
         // or if the whole browser just doesn't support the feature.
         if (document.body.requestPointerLock
-          || document.body.msRequestPointerLock
           ) {
           return -3;
         }
@@ -6621,8 +6460,6 @@ function emsdbg(text) { console.log(text); }
   
       if (document.exitPointerLock) {
         document.exitPointerLock();
-      } else if (document.msExitPointerLock) {
-        document.msExitPointerLock();
       } else {
         return -1;
       }
@@ -6642,6 +6479,8 @@ function emsdbg(text) { console.log(text); }
   
 
   
+  
+  
   function _emscripten_get_element_css_size(target, width, height) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(29, 1, target, width, height);
@@ -6658,6 +6497,7 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   function fillGamepadEventData(eventStruct, e) {
       HEAPF64[((eventStruct)>>3)] = e.timestamp;
       for (var i = 0; i < e.axes.length; ++i) {
@@ -6961,6 +6801,7 @@ function emsdbg(text) { console.log(text); }
     }
 
   var tempFixedLengthArray = [];
+  
   function _emscripten_glDrawBuffersWEBGL(n, bufs) {
   
       var bufArray = tempFixedLengthArray[n];
@@ -7021,11 +6862,13 @@ function emsdbg(text) { console.log(text); }
         HEAP32[(((buffers)+(i*4))>>2)] = id;
       }
     }
+  
   function _emscripten_glGenBuffers(n, buffers) {
       __glGenObject(n, buffers, 'createBuffer', GL.buffers
         );
     }
 
+  
   function _emscripten_glGenFramebuffers(n, ids) {
       __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
         );
@@ -7046,16 +6889,19 @@ function emsdbg(text) { console.log(text); }
       }
     }
 
+  
   function _emscripten_glGenRenderbuffers(n, renderbuffers) {
       __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
         );
     }
 
+  
   function _emscripten_glGenTextures(n, textures) {
       __glGenObject(n, textures, 'createTexture', GL.textures
         );
     }
 
+  
   function _emscripten_glGenVertexArraysOES(n, arrays) {
       __glGenObject(n, arrays, 'createVertexArray', GL.vaos
         );
@@ -7073,10 +6919,12 @@ function emsdbg(text) { console.log(text); }
         if (type) HEAP32[((type)>>2)] = info.type;
       }
     }
+  
   function _emscripten_glGetActiveAttrib(program, index, bufSize, length, size, type, name) {
       __glGetActiveAttribOrUniform('getActiveAttrib', program, index, bufSize, length, size, type, name);
     }
 
+  
   function _emscripten_glGetActiveUniform(program, index, bufSize, length, size, type, name) {
       __glGetActiveAttribOrUniform('getActiveUniform', program, index, bufSize, length, size, type, name);
     }
@@ -7109,8 +6957,9 @@ function emsdbg(text) { console.log(text); }
       HEAPU32[ptr>>2] = num;
       HEAPU32[ptr+4>>2] = (num - HEAPU32[ptr>>2])/4294967296;
       var deserialized = (num >= 0) ? readI53FromU64(ptr) : readI53FromI64(ptr);
-      if (deserialized != num) warnOnce('writeI53ToI64() out of range: serialized JS Number ' + num + ' to Wasm heap as bytes lo=0x' + HEAPU32[ptr>>2].toString(16) + ', hi=0x' + HEAPU32[ptr+4>>2].toString(16) + ', which deserializes back to ' + deserialized + ' instead!');
+      if (deserialized != num) warnOnce('writeI53ToI64() out of range: serialized JS Number ' + num + ' to Wasm heap as bytes lo=' + ptrToString(HEAPU32[ptr>>2]) + ', hi=' + ptrToString(HEAPU32[ptr+4>>2]) + ', which deserializes back to ' + deserialized + ' instead!');
     }
+  
   function emscriptenWebGLGet(name_, p, type) {
       // Guard against user passing a null pointer.
       // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
@@ -7211,6 +7060,7 @@ function emsdbg(text) { console.log(text); }
         case 4: HEAP8[((p)>>0)] = ret ? 1 : 0; break;
       }
     }
+  
   function _emscripten_glGetBooleanv(name_, p) {
       emscriptenWebGLGet(name_, p, 4);
     }
@@ -7231,6 +7081,7 @@ function emsdbg(text) { console.log(text); }
       return error;
     }
 
+  
   function _emscripten_glGetFloatv(name_, p) {
       emscriptenWebGLGet(name_, p, 2);
     }
@@ -7244,6 +7095,7 @@ function emsdbg(text) { console.log(text); }
       HEAP32[((params)>>2)] = result;
     }
 
+  
   function _emscripten_glGetIntegerv(name_, p) {
       emscriptenWebGLGet(name_, p, 0);
     }
@@ -7300,6 +7152,7 @@ function emsdbg(text) { console.log(text); }
       }
     }
 
+  
   function _emscripten_glGetQueryObjecti64vEXT(id, pname, params) {
       if (!params) {
         // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -7339,6 +7192,7 @@ function emsdbg(text) { console.log(text); }
       HEAP32[((params)>>2)] = ret;
     }
 
+  
   function _emscripten_glGetQueryObjectui64vEXT(id, pname, params) {
       if (!params) {
         // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -7452,6 +7306,7 @@ function emsdbg(text) { console.log(text); }
       stringToUTF8(jsString, cString, length);
       return cString;
     }
+  
   function _emscripten_glGetString(name_) {
       var ret = GL.stringCache[name_];
       if (!ret) {
@@ -7529,6 +7384,7 @@ function emsdbg(text) { console.log(text); }
   function webglGetLeftBracePos(name) {
       return name.slice(-1) == ']' && name.lastIndexOf('[');
     }
+  
   function webglPrepareUniformLocationsBeforeFirstUse(program) {
       var uniformLocsById = program.uniformLocsById, // Maps GLuint -> WebGLUniformLocation
         uniformSizeAndIdsByName = program.uniformSizeAndIdsByName, // Maps name -> [uniform array length, GLuint]
@@ -7568,6 +7424,8 @@ function emsdbg(text) { console.log(text); }
         }
       }
     }
+  
+  
   function _emscripten_glGetUniformLocation(program, name) {
   
       name = UTF8ToString(name);
@@ -7629,6 +7487,8 @@ function emsdbg(text) { console.log(text); }
         GL.recordError(0x502/*GL_INVALID_OPERATION*/);
       }
     }
+  
+  
   /** @suppress{checkTypes} */
   function emscriptenWebGLGetUniform(program, location, params, type) {
       if (!params) {
@@ -7654,10 +7514,12 @@ function emsdbg(text) { console.log(text); }
         }
       }
     }
+  
   function _emscripten_glGetUniformfv(program, location, params) {
       emscriptenWebGLGetUniform(program, location, params, 2);
     }
 
+  
   function _emscripten_glGetUniformiv(program, location, params) {
       emscriptenWebGLGetUniform(program, location, params, 0);
     }
@@ -7699,12 +7561,14 @@ function emsdbg(text) { console.log(text); }
         }
       }
     }
+  
   function _emscripten_glGetVertexAttribfv(index, pname, params) {
       // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
       // otherwise the results are undefined. (GLES3 spec 6.1.12)
       emscriptenWebGLGetVertexAttrib(index, pname, params, 2);
     }
 
+  
   function _emscripten_glGetVertexAttribiv(index, pname, params) {
       // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
       // otherwise the results are undefined. (GLES3 spec 6.1.12)
@@ -7837,6 +7701,7 @@ function emsdbg(text) { console.log(text); }
   function heapAccessShiftForWebGLHeap(heap) {
       return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
     }
+  
   function emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) {
       var heap = heapObjectForWebGLType(type);
       var shift = heapAccessShiftForWebGLHeap(heap);
@@ -7845,6 +7710,7 @@ function emsdbg(text) { console.log(text); }
       var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
       return heap.subarray(pixels >> shift, pixels + bytes >> shift);
     }
+  
   function _emscripten_glReadPixels(x, y, width, height, format, type, pixels) {
       var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
       if (!pixelData) {
@@ -7888,6 +7754,7 @@ function emsdbg(text) { console.log(text); }
 
   function _emscripten_glStencilOpSeparate(x0, x1, x2, x3) { GLctx['stencilOpSeparate'](x0, x1, x2, x3) }
 
+  
   function _emscripten_glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels) {
       GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
     }
@@ -7906,17 +7773,21 @@ function emsdbg(text) { console.log(text); }
       GLctx.texParameteri(target, pname, param);
     }
 
+  
   function _emscripten_glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels) {
       var pixelData = null;
       if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
       GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
     }
 
+  
   function _emscripten_glUniform1f(location, v0) {
       GLctx.uniform1f(webglGetUniformLocation(location), v0);
     }
 
+  
   var miniTempWebGLFloatBuffers = [];
+  
   function _emscripten_glUniform1fv(location, count, value) {
   
       if (count <= 288) {
@@ -7932,11 +7803,14 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform1fv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform1i(location, v0) {
       GLctx.uniform1i(webglGetUniformLocation(location), v0);
     }
 
+  
   var __miniTempWebGLIntBuffers = [];
+  
   function _emscripten_glUniform1iv(location, count, value) {
   
       if (count <= 288) {
@@ -7952,10 +7826,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform1iv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform2f(location, v0, v1) {
       GLctx.uniform2f(webglGetUniformLocation(location), v0, v1);
     }
 
+  
+  
   function _emscripten_glUniform2fv(location, count, value) {
   
       if (count <= 144) {
@@ -7972,10 +7849,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform2fv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform2i(location, v0, v1) {
       GLctx.uniform2i(webglGetUniformLocation(location), v0, v1);
     }
 
+  
+  
   function _emscripten_glUniform2iv(location, count, value) {
   
       if (count <= 144) {
@@ -7992,10 +7872,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform2iv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform3f(location, v0, v1, v2) {
       GLctx.uniform3f(webglGetUniformLocation(location), v0, v1, v2);
     }
 
+  
+  
   function _emscripten_glUniform3fv(location, count, value) {
   
       if (count <= 96) {
@@ -8013,10 +7896,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform3fv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform3i(location, v0, v1, v2) {
       GLctx.uniform3i(webglGetUniformLocation(location), v0, v1, v2);
     }
 
+  
+  
   function _emscripten_glUniform3iv(location, count, value) {
   
       if (count <= 96) {
@@ -8034,10 +7920,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform3iv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform4f(location, v0, v1, v2, v3) {
       GLctx.uniform4f(webglGetUniformLocation(location), v0, v1, v2, v3);
     }
 
+  
+  
   function _emscripten_glUniform4fv(location, count, value) {
   
       if (count <= 72) {
@@ -8060,10 +7949,13 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform4fv(webglGetUniformLocation(location), view);
     }
 
+  
   function _emscripten_glUniform4i(location, v0, v1, v2, v3) {
       GLctx.uniform4i(webglGetUniformLocation(location), v0, v1, v2, v3);
     }
 
+  
+  
   function _emscripten_glUniform4iv(location, count, value) {
   
       if (count <= 72) {
@@ -8082,6 +7974,8 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniform4iv(webglGetUniformLocation(location), view);
     }
 
+  
+  
   function _emscripten_glUniformMatrix2fv(location, count, transpose, value) {
   
       if (count <= 72) {
@@ -8100,6 +7994,8 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, view);
     }
 
+  
+  
   function _emscripten_glUniformMatrix3fv(location, count, transpose, value) {
   
       if (count <= 32) {
@@ -8123,6 +8019,8 @@ function emsdbg(text) { console.log(text); }
       GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, view);
     }
 
+  
+  
   function _emscripten_glUniformMatrix4fv(location, count, transpose, value) {
   
       if (count <= 18) {
@@ -8215,6 +8113,8 @@ function emsdbg(text) { console.log(text); }
       HEAPU8.copyWithin(dest, src, src + num);
     }
 
+  
+  
   /** @type{function(number, (number|boolean), ...(number|boolean))} */
   function _emscripten_proxy_to_main_thread_js(index, sync) {
       // Additional arguments are passed after those two, which are the actual
@@ -8224,7 +8124,10 @@ function emsdbg(text) { console.log(text); }
       // We also pass 'sync' to C separately, since C needs to look at it.
       var numCallArgs = arguments.length - 2;
       var outerArgs = arguments;
-      if (numCallArgs > 20-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + (20-1) + '!';
+      var maxArgs = 19;
+      if (numCallArgs > maxArgs) {
+        throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + maxArgs;
+      }
       // Allocate a buffer, which will be copied by the C code.
       return withStackSave(() => {
         // First passed parameter specifies the number of arguments to the function.
@@ -8245,6 +8148,7 @@ function emsdbg(text) { console.log(text); }
     }
   
   var _emscripten_receive_on_main_thread_js_callArgs = [];
+  
   function _emscripten_receive_on_main_thread_js(index, numCallArgs, args) {
       _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
       var b = args >> 3;
@@ -8259,6 +8163,13 @@ function emsdbg(text) { console.log(text); }
       return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
     }
 
+  
+  
+  
+  
+  
+  
+  
   function doRequestFullscreen(target, strategy) {
       if (!JSEvents.fullscreenEnabled()) return -1;
       target = findEventTarget(target);
@@ -8284,6 +8195,8 @@ function emsdbg(text) { console.log(text); }
       return JSEvents_requestFullscreen(target, strategy);
     }
   
+  
+  
   function _emscripten_request_fullscreen_strategy(target, deferUntilInEventHandler, fullscreenStrategy) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(33, 1, target, deferUntilInEventHandler, fullscreenStrategy);
@@ -8304,6 +8217,8 @@ function emsdbg(text) { console.log(text); }
   
 
   
+  
+  
   function _emscripten_request_pointerlock(target, deferUntilInEventHandler) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(34, 1, target, deferUntilInEventHandler);
@@ -8311,7 +8226,6 @@ function emsdbg(text) { console.log(text); }
       target = findEventTarget(target);
       if (!target) return -4;
       if (!target.requestPointerLock
-        && !target.msRequestPointerLock
         ) {
         return -1;
       }
@@ -8336,6 +8250,7 @@ function emsdbg(text) { console.log(text); }
       return HEAPU8.length;
     }
   
+  
   function abortOnCannotGrowMemory(requestedSize) {
       abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ' + HEAP8.length + ', (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0');
     }
@@ -8356,10 +8271,10 @@ function emsdbg(text) { console.log(text); }
   }
   
 
-  function registerBeforeUnloadEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-      var beforeUnloadEventHandlerFunc = function(ev) {
-        var e = ev || event;
   
+  
+  function registerBeforeUnloadEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
+      var beforeUnloadEventHandlerFunc = function(e = event) {
         // Note: This is always called on the main browser thread, since it needs synchronously return a value!
         var confirmationMessage = getWasmTableEntry(callbackfunc)(eventTypeId, 0, userData);
         
@@ -8397,13 +8312,13 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function registerFocusEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.focusEvent) JSEvents.focusEvent = _malloc( 256 );
   
-      var focusEventHandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var focusEventHandlerFunc = function(e = event) {
         var nodeName = JSEvents.getNodeNameForTarget(e.target);
         var id = e.target.id ? e.target.id : '';
   
@@ -8438,6 +8353,7 @@ function emsdbg(text) { console.log(text); }
 
 
   
+  
   function _emscripten_set_element_css_size(target, width, height) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(38, 1, target, width, height);
@@ -8464,6 +8380,8 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function fillFullscreenChangeEventData(eventStruct) {
       var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
       var isFullscreen = !!fullscreenElement;
@@ -8486,13 +8404,13 @@ function emsdbg(text) { console.log(text); }
         JSEvents.previousFullscreenElement = fullscreenElement;
       }
     }
+  
+  
   function registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.fullscreenChangeEvent) JSEvents.fullscreenChangeEvent = _malloc( 280 );
   
-      var fullscreenChangeEventhandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var fullscreenChangeEventhandlerFunc = function(e = event) {
         var fullscreenChangeEvent = targetThread ? _malloc( 280 ) : JSEvents.fullscreenChangeEvent;
   
         fillFullscreenChangeEventData(fullscreenChangeEvent);
@@ -8512,6 +8430,8 @@ function emsdbg(text) { console.log(text); }
       JSEvents.registerOrRemoveHandler(eventHandler);
     }
   
+  
+  
   function _emscripten_set_fullscreenchange_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(40, 1, target, userData, useCapture, callbackfunc, targetThread);
@@ -8530,13 +8450,14 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
+  
   function registerGamepadEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.gamepadEvent) JSEvents.gamepadEvent = _malloc( 1432 );
   
-      var gamepadEventHandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var gamepadEventHandlerFunc = function(e = event) {
         var gamepadEvent = targetThread ? _malloc( 1432 ) : JSEvents.gamepadEvent;
         fillGamepadEventData(gamepadEvent, e["gamepad"]);
   
@@ -8579,6 +8500,8 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function registerKeyEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc( 176 );
@@ -8653,11 +8576,16 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function _emscripten_set_main_loop_arg(func, arg, fps, simulateInfiniteLoop) {
       var browserIterationFunc = () => getWasmTableEntry(func)(arg);
       setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
     }
 
+  
+  
+  
   function fillMouseEventData(eventStruct, e, target) {
       assert(eventStruct % 4 == 0);
       HEAPF64[((eventStruct)>>3)] = e.timeStamp;
@@ -8684,14 +8612,14 @@ function emsdbg(text) { console.log(text); }
       HEAP32[idx + 14] = e.clientY - rect.top;
   
     }
+  
+  
   function registerMouseEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.mouseEvent) JSEvents.mouseEvent = _malloc( 72 );
       target = findEventTarget(target);
   
-      var mouseEventHandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var mouseEventHandlerFunc = function(e = event) {
         // TODO: Make this access thread safe, or this could update live while app is reading it.
         fillMouseEventData(JSEvents.mouseEvent, e, target);
   
@@ -8768,6 +8696,8 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function fillPointerlockChangeEventData(eventStruct) {
       var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
       var isPointerlocked = !!pointerLockElement;
@@ -8779,13 +8709,13 @@ function emsdbg(text) { console.log(text); }
       stringToUTF8(nodeName, eventStruct + 4, 128);
       stringToUTF8(id, eventStruct + 132, 128);
     }
+  
+  
   function registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.pointerlockChangeEvent) JSEvents.pointerlockChangeEvent = _malloc( 260 );
   
-      var pointerlockChangeEventHandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var pointerlockChangeEventHandlerFunc = function(e = event) {
         var pointerlockChangeEvent = targetThread ? _malloc( 260 ) : JSEvents.pointerlockChangeEvent;
         fillPointerlockChangeEventData(pointerlockChangeEvent);
   
@@ -8803,6 +8733,8 @@ function emsdbg(text) { console.log(text); }
       };
       JSEvents.registerOrRemoveHandler(eventHandler);
     }
+  
+  
   /** @suppress {missingProperties} */
   
   function _emscripten_set_pointerlockchange_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
@@ -8825,14 +8757,15 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
   function registerUiEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.uiEvent) JSEvents.uiEvent = _malloc( 36 );
   
       target = findEventTarget(target);
   
-      var uiEventHandlerFunc = function(ev) {
-        var e = ev || event;
+      var uiEventHandlerFunc = function(e = event) {
         if (e.target != target) {
           // Never take ui events such as scroll via a 'bubbled' route, but always from the direct element that
           // was targeted. Otherwise e.g. if app logs a message in response to a page scroll, the Emscripten log
@@ -8880,6 +8813,9 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
+  
   function registerTouchEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.touchEvent) JSEvents.touchEvent = _malloc( 1696 );
@@ -9002,6 +8938,7 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   function fillVisibilityChangeEventData(eventStruct) {
       var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
       var visibilityState = visibilityStates.indexOf(document.visibilityState);
@@ -9011,13 +8948,13 @@ function emsdbg(text) { console.log(text); }
       HEAP32[((eventStruct)>>2)] = document.hidden;
       HEAP32[(((eventStruct)+(4))>>2)] = visibilityState;
     }
+  
+  
   function registerVisibilityChangeEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.visibilityChangeEvent) JSEvents.visibilityChangeEvent = _malloc( 8 );
   
-      var visibilityChangeEventHandlerFunc = function(ev) {
-        var e = ev || event;
-  
+      var visibilityChangeEventHandlerFunc = function(e = event) {
         var visibilityChangeEvent = targetThread ? _malloc( 8 ) : JSEvents.visibilityChangeEvent;
   
         fillVisibilityChangeEventData(visibilityChangeEvent);
@@ -9037,6 +8974,7 @@ function emsdbg(text) { console.log(text); }
       JSEvents.registerOrRemoveHandler(eventHandler);
     }
   
+  
   function _emscripten_set_visibilitychange_callback_on_thread(userData, useCapture, callbackfunc, targetThread) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(57, 1, userData, useCapture, callbackfunc, targetThread);
@@ -9050,13 +8988,16 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
+  
+  
+  
   function registerWheelEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
       targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
       if (!JSEvents.wheelEvent) JSEvents.wheelEvent = _malloc( 104 );
   
       // The DOM Level 3 events spec event 'wheel'
-      var wheelHandlerFunc = function(ev) {
-        var e = ev || event;
+      var wheelHandlerFunc = function(e = event) {
         var wheelEvent = targetThread ? _malloc( 104 ) : JSEvents.wheelEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
         fillMouseEventData(wheelEvent, e, target);
         HEAPF64[(((wheelEvent)+(72))>>3)] = e["deltaX"];
@@ -9078,6 +9019,7 @@ function emsdbg(text) { console.log(text); }
       };
       JSEvents.registerOrRemoveHandler(eventHandler);
     }
+  
   
   function _emscripten_set_wheel_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -9114,6 +9056,7 @@ function emsdbg(text) { console.log(text); }
       let data = e.data, wasmCall = data['_wsc']; // '_wsc' is short for 'wasm call', trying to use an identifier name that will never conflict with user code
       wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
     }
+  
   function _emscripten_start_wasm_audio_worklet_thread_async(contextHandle, stackLowestAddress, stackSize, callback, userData) {
   
       assert(contextHandle, `Called emscripten_start_wasm_audio_worklet_thread_async() with a null Web Audio Context handle!`);
@@ -9222,6 +9165,7 @@ function emsdbg(text) { console.log(text); }
       if (!dontAddNull) HEAP8[((buffer)>>0)] = 0;
     }
   
+  
   function _environ_get(__environ, environ_buf) {
     if (ENVIRONMENT_IS_PTHREAD)
       return _emscripten_proxy_to_main_thread_js(60, 1, __environ, environ_buf);
@@ -9238,6 +9182,7 @@ function emsdbg(text) { console.log(text); }
   }
   
 
+  
   
   function _environ_sizes_get(penviron_count, penviron_buf_size) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -9285,9 +9230,13 @@ function emsdbg(text) { console.log(text); }
         if (curr < 0) return -1;
         ret += curr;
         if (curr < len) break; // nothing more to read
+        if (typeof offset !== 'undefined') {
+          offset += curr;
+        }
       }
       return ret;
     }
+  
   
   function _fd_read(fd, iov, iovcnt, pnum) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -9312,6 +9261,10 @@ function emsdbg(text) { console.log(text); }
       assert(hi === (hi|0));                    // hi should be a i32
       return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
     }
+  
+  
+  
+  
   
   function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -9343,9 +9296,13 @@ function emsdbg(text) { console.log(text); }
         var curr = FS.write(stream, HEAP8,ptr, len, offset);
         if (curr < 0) return -1;
         ret += curr;
+        if (typeof offset !== 'undefined') {
+          offset += curr;
+        }
       }
       return ret;
     }
+  
   
   function _fd_write(fd, iov, iovcnt, pnum) {
     if (ENVIRONMENT_IS_PTHREAD)
@@ -9465,16 +9422,19 @@ function emsdbg(text) { console.log(text); }
       GLctx.enableVertexAttribArray(index);
     }
 
+  
   function _glGenBuffers(n, buffers) {
       __glGenObject(n, buffers, 'createBuffer', GL.buffers
         );
     }
 
+  
   function _glGenTextures(n, textures) {
       __glGenObject(n, textures, 'createTexture', GL.textures
         );
     }
 
+  
   function _glGenVertexArraysOES(n, arrays) {
       __glGenObject(n, arrays, 'createVertexArray', GL.vaos
         );
@@ -9484,6 +9444,7 @@ function emsdbg(text) { console.log(text); }
       return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
     }
 
+  
   function _glGetIntegerv(name_, p) {
       emscriptenWebGLGet(name_, p, 0);
     }
@@ -9574,6 +9535,9 @@ function emsdbg(text) { console.log(text); }
       }
     }
 
+  
+  
+  
   function _glGetUniformLocation(program, name) {
   
       name = UTF8ToString(name);
@@ -9636,16 +9600,20 @@ function emsdbg(text) { console.log(text); }
       GLctx.shaderSource(GL.shaders[shader], source);
     }
 
+  
   function _glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels) {
       GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
     }
 
   function _glTexParameteri(x0, x1, x2) { GLctx['texParameteri'](x0, x1, x2) }
 
+  
   function _glUniform1i(location, v0) {
       GLctx.uniform1i(webglGetUniformLocation(location), v0);
     }
 
+  
+  
   function _glUniformMatrix4fv(location, count, transpose, value) {
   
       if (count <= 18) {
@@ -9706,6 +9674,7 @@ function emsdbg(text) { console.log(text); }
       return sum;
     }
   
+  
   var __MONTH_DAYS_LEAP = [31,29,31,30,31,30,31,31,30,31,30,31];
   
   var __MONTH_DAYS_REGULAR = [31,28,31,30,31,30,31,31,30,31,30,31];
@@ -9735,6 +9704,9 @@ function emsdbg(text) { console.log(text); }
   
       return newDate;
     }
+  
+  
+  
   
   function writeArrayToMemory(array, buffer) {
       assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
@@ -10031,6 +10003,7 @@ function emsdbg(text) { console.log(text); }
 
 
 
+
   function allocateUTF8OnStack(str) {
       var size = lengthBytesUTF8(str) + 1;
       var ret = stackAlloc(size);
@@ -10038,12 +10011,12 @@ function emsdbg(text) { console.log(text); }
       return ret;
     }
 
-
   function getCFunc(ident) {
       var func = Module['_' + ident]; // closure exported function
       assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
       return func;
     }
+  
   
   
     /**
@@ -10117,6 +10090,7 @@ function emsdbg(text) { console.log(text); }
       }
     }
 
+
 PThread.init();;
 
   var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
@@ -10164,7 +10138,7 @@ PThread.init();;
    }
   });
   FS.FSNode = FSNode;
-  FS.staticInit();Module["FS_createPath"] = FS.createPath;Module["FS_createDataFile"] = FS.createDataFile;Module["FS_createPreloadedFile"] = FS.createPreloadedFile;Module["FS_unlink"] = FS.unlink;Module["FS_createLazyFile"] = FS.createLazyFile;Module["FS_createDevice"] = FS.createDevice;;
+  FS.staticInit();;
 ERRNO_CODES = {
       'EPERM': 63,
       'ENOENT': 44,
@@ -10317,83 +10291,12 @@ var __miniTempWebGLIntBuffersStorage = new Int32Array(288);
 
 var proxiedFunctionTable = [null,_proc_exit,exitOnMainThread,pthreadCreateProxied,___syscall_fcntl64,___syscall_ioctl,___syscall_openat,_eglBindAPI,_eglChooseConfig,_eglCreateContext,_eglCreateWindowSurface,_eglDestroyContext,_eglDestroySurface,_eglGetConfigAttrib,_eglGetDisplay,_eglGetError,_eglInitialize,_eglMakeCurrent,_eglQueryString,_eglSwapBuffers,_eglSwapInterval,_eglTerminate,_eglWaitClient,_eglWaitNative,_emscripten_exit_fullscreen,_emscripten_get_canvas_element_size_main_thread,_emscripten_set_canvas_element_size_main_thread,_emscripten_exit_pointerlock,_emscripten_get_device_pixel_ratio,_emscripten_get_element_css_size,_emscripten_get_gamepad_status,_emscripten_get_num_gamepads,_emscripten_get_screen_size,_emscripten_request_fullscreen_strategy,_emscripten_request_pointerlock,_emscripten_sample_gamepad_data,_emscripten_set_beforeunload_callback_on_thread,_emscripten_set_blur_callback_on_thread,_emscripten_set_element_css_size,_emscripten_set_focus_callback_on_thread,_emscripten_set_fullscreenchange_callback_on_thread,_emscripten_set_gamepadconnected_callback_on_thread,_emscripten_set_gamepaddisconnected_callback_on_thread,_emscripten_set_keydown_callback_on_thread,_emscripten_set_keypress_callback_on_thread,_emscripten_set_keyup_callback_on_thread,_emscripten_set_mousedown_callback_on_thread,_emscripten_set_mouseenter_callback_on_thread,_emscripten_set_mouseleave_callback_on_thread,_emscripten_set_mousemove_callback_on_thread,_emscripten_set_mouseup_callback_on_thread,_emscripten_set_pointerlockchange_callback_on_thread,_emscripten_set_resize_callback_on_thread,_emscripten_set_touchcancel_callback_on_thread,_emscripten_set_touchend_callback_on_thread,_emscripten_set_touchmove_callback_on_thread,_emscripten_set_touchstart_callback_on_thread,_emscripten_set_visibilitychange_callback_on_thread,_emscripten_set_wheel_callback_on_thread,_emscripten_set_window_title,_environ_get,_environ_sizes_get,_fd_close,_fd_read,_fd_seek,_fd_write];
 
-var ASSERTIONS = true;
-
-// Copied from https://github.com/strophe/strophejs/blob/e06d027/src/polyfills.js#L149
-
-// This code was written by Tyler Akins and has been placed in the
-// public domain.  It would be nice if you left this header intact.
-// Base64 code from Tyler Akins -- http://rumkin.com
-
-/**
- * Decodes a base64 string.
- * @param {string} input The string to decode.
- */
-var decodeBase64 = typeof atob == 'function' ? atob : function (input) {
-  var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-
-  var output = '';
-  var chr1, chr2, chr3;
-  var enc1, enc2, enc3, enc4;
-  var i = 0;
-  // remove all characters that are not A-Z, a-z, 0-9, +, /, or =
-  input = input.replace(/[^A-Za-z0-9\+\/\=]/g, '');
-  do {
-    enc1 = keyStr.indexOf(input.charAt(i++));
-    enc2 = keyStr.indexOf(input.charAt(i++));
-    enc3 = keyStr.indexOf(input.charAt(i++));
-    enc4 = keyStr.indexOf(input.charAt(i++));
-
-    chr1 = (enc1 << 2) | (enc2 >> 4);
-    chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-    chr3 = ((enc3 & 3) << 6) | enc4;
-
-    output = output + String.fromCharCode(chr1);
-
-    if (enc3 !== 64) {
-      output = output + String.fromCharCode(chr2);
-    }
-    if (enc4 !== 64) {
-      output = output + String.fromCharCode(chr3);
-    }
-  } while (i < input.length);
-  return output;
-};
-
-// Converts a string of base64 into a byte array.
-// Throws error on invalid input.
-function intArrayFromBase64(s) {
-
-  try {
-    var decoded = decodeBase64(s);
-    var bytes = new Uint8Array(decoded.length);
-    for (var i = 0 ; i < decoded.length ; ++i) {
-      bytes[i] = decoded.charCodeAt(i);
-    }
-    return bytes;
-  } catch (_) {
-    throw new Error('Converting base64 string to bytes failed.');
-  }
-}
-
-// If filename is a base64 data URI, parses and returns data (Buffer on node,
-// Uint8Array otherwise). If filename is not a base64 data URI, returns undefined.
-function tryParseAsDataURI(filename) {
-  if (!isDataURI(filename)) {
-    return;
-  }
-
-  return intArrayFromBase64(filename.slice(dataURIPrefix.length));
-}
-
-
 function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
-var asmLibraryArg = {
+var wasmImports = {
   "__assert_fail": ___assert_fail,
   "__call_sighandler": ___call_sighandler,
-  "__cxa_allocate_exception": ___cxa_allocate_exception,
   "__cxa_throw": ___cxa_throw,
   "__emscripten_init_main_thread_js": ___emscripten_init_main_thread_js,
   "__emscripten_thread_cleanup": ___emscripten_thread_cleanup,
@@ -10404,11 +10307,14 @@ var asmLibraryArg = {
   "__syscall_openat": ___syscall_openat,
   "_dlinit": __dlinit,
   "_dlopen_js": __dlopen_js,
+  "_dlsym_catchup_js": __dlsym_catchup_js,
   "_emscripten_default_pthread_stack_size": __emscripten_default_pthread_stack_size,
+  "_emscripten_err": __emscripten_err,
   "_emscripten_get_now_is_monotonic": __emscripten_get_now_is_monotonic,
   "_emscripten_notify_task_queue": __emscripten_notify_task_queue,
   "_emscripten_set_offscreencanvas_size": __emscripten_set_offscreencanvas_size,
   "abort": _abort,
+  "download": download,
   "eglBindAPI": _eglBindAPI,
   "eglChooseConfig": _eglChooseConfig,
   "eglCreateContext": _eglCreateContext,
@@ -10638,7 +10544,6 @@ var asmLibraryArg = {
   "emscripten_sleep": _emscripten_sleep,
   "emscripten_start_wasm_audio_worklet_thread_async": _emscripten_start_wasm_audio_worklet_thread_async,
   "emscripten_unwind_to_js_event_loop": _emscripten_unwind_to_js_event_loop,
-  "emsdbg": emsdbg,
   "environ_get": _environ_get,
   "environ_sizes_get": _environ_sizes_get,
   "exit": _exit,
@@ -10690,153 +10595,212 @@ var asmLibraryArg = {
   "glVertexAttribPointer": _glVertexAttribPointer,
   "glViewport": _glViewport,
   "memory": wasmMemory,
-  "strftime_l": _strftime_l
+  "strftime_l": _strftime_l,
+  "upload": upload
 };
 var asm = createWasm();
 /** @type {function(...*):?} */
-var ___wasm_call_ctors = Module["___wasm_call_ctors"] = createExportWrapper("__wasm_call_ctors");
-
+var ___wasm_call_ctors = createExportWrapper("__wasm_call_ctors");
 /** @type {function(...*):?} */
 var _main = Module["_main"] = createExportWrapper("__main_argc_argv");
-
 /** @type {function(...*):?} */
-var _malloc = Module["_malloc"] = createExportWrapper("malloc");
-
+var _load_file_return = Module["_load_file_return"] = createExportWrapper("load_file_return");
 /** @type {function(...*):?} */
-var _free = Module["_free"] = createExportWrapper("free");
-
+var _malloc = createExportWrapper("malloc");
+/** @type {function(...*):?} */
+var _free = createExportWrapper("free");
 /** @type {function(...*):?} */
 var _fflush = Module["_fflush"] = createExportWrapper("fflush");
-
 /** @type {function(...*):?} */
-var _memcpy = Module["_memcpy"] = createExportWrapper("memcpy");
-
+var _memcpy = createExportWrapper("memcpy");
 /** @type {function(...*):?} */
 var _pthread_self = Module["_pthread_self"] = createExportWrapper("pthread_self");
-
 /** @type {function(...*):?} */
-var ___errno_location = Module["___errno_location"] = createExportWrapper("__errno_location");
-
+var ___errno_location = createExportWrapper("__errno_location");
 /** @type {function(...*):?} */
 var __emscripten_tls_init = Module["__emscripten_tls_init"] = createExportWrapper("_emscripten_tls_init");
-
 /** @type {function(...*):?} */
-var ___dl_seterr = Module["___dl_seterr"] = createExportWrapper("__dl_seterr");
-
+var ___dl_seterr = createExportWrapper("__dl_seterr");
 /** @type {function(...*):?} */
 var __emscripten_thread_init = Module["__emscripten_thread_init"] = createExportWrapper("_emscripten_thread_init");
-
 /** @type {function(...*):?} */
 var ___set_thread_state = Module["___set_thread_state"] = createExportWrapper("__set_thread_state");
-
 /** @type {function(...*):?} */
 var __emscripten_thread_crashed = Module["__emscripten_thread_crashed"] = createExportWrapper("_emscripten_thread_crashed");
-
 /** @type {function(...*):?} */
-var _emscripten_main_thread_process_queued_calls = Module["_emscripten_main_thread_process_queued_calls"] = createExportWrapper("emscripten_main_thread_process_queued_calls");
-
+var _emscripten_main_thread_process_queued_calls = createExportWrapper("emscripten_main_thread_process_queued_calls");
 /** @type {function(...*):?} */
-var _emscripten_main_browser_thread_id = Module["_emscripten_main_browser_thread_id"] = createExportWrapper("emscripten_main_browser_thread_id");
-
+var _emscripten_main_browser_thread_id = createExportWrapper("emscripten_main_browser_thread_id");
 /** @type {function(...*):?} */
-var _emscripten_run_in_main_runtime_thread_js = Module["_emscripten_run_in_main_runtime_thread_js"] = createExportWrapper("emscripten_run_in_main_runtime_thread_js");
-
+var _emscripten_run_in_main_runtime_thread_js = createExportWrapper("emscripten_run_in_main_runtime_thread_js");
 /** @type {function(...*):?} */
-var _emscripten_dispatch_to_thread_ = Module["_emscripten_dispatch_to_thread_"] = createExportWrapper("emscripten_dispatch_to_thread_");
-
+var _emscripten_dispatch_to_thread_ = createExportWrapper("emscripten_dispatch_to_thread_");
 /** @type {function(...*):?} */
-var _emscripten_stack_get_base = Module["_emscripten_stack_get_base"] = function() {
-  return (_emscripten_stack_get_base = Module["_emscripten_stack_get_base"] = Module["asm"]["emscripten_stack_get_base"]).apply(null, arguments);
+var _emscripten_stack_get_base = function() {
+  return (_emscripten_stack_get_base = Module["asm"]["emscripten_stack_get_base"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
-var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function() {
-  return (_emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
+var _emscripten_stack_get_end = function() {
+  return (_emscripten_stack_get_end = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
 var __emscripten_proxy_execute_task_queue = Module["__emscripten_proxy_execute_task_queue"] = createExportWrapper("_emscripten_proxy_execute_task_queue");
-
 /** @type {function(...*):?} */
-var __emscripten_thread_free_data = Module["__emscripten_thread_free_data"] = createExportWrapper("_emscripten_thread_free_data");
-
+var __emscripten_thread_free_data = createExportWrapper("_emscripten_thread_free_data");
 /** @type {function(...*):?} */
 var __emscripten_thread_exit = Module["__emscripten_thread_exit"] = createExportWrapper("_emscripten_thread_exit");
-
 /** @type {function(...*):?} */
-var _emscripten_stack_init = Module["_emscripten_stack_init"] = function() {
-  return (_emscripten_stack_init = Module["_emscripten_stack_init"] = Module["asm"]["emscripten_stack_init"]).apply(null, arguments);
+var _emscripten_stack_init = function() {
+  return (_emscripten_stack_init = Module["asm"]["emscripten_stack_init"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
-var _emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = function() {
-  return (_emscripten_stack_set_limits = Module["_emscripten_stack_set_limits"] = Module["asm"]["emscripten_stack_set_limits"]).apply(null, arguments);
+var _emscripten_stack_set_limits = function() {
+  return (_emscripten_stack_set_limits = Module["asm"]["emscripten_stack_set_limits"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
-var _emscripten_stack_get_free = Module["_emscripten_stack_get_free"] = function() {
-  return (_emscripten_stack_get_free = Module["_emscripten_stack_get_free"] = Module["asm"]["emscripten_stack_get_free"]).apply(null, arguments);
+var _emscripten_stack_get_free = function() {
+  return (_emscripten_stack_get_free = Module["asm"]["emscripten_stack_get_free"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
 var _emscripten_wasm_worker_initialize = Module["_emscripten_wasm_worker_initialize"] = createExportWrapper("emscripten_wasm_worker_initialize");
+/** @type {function(...*):?} */
+var stackSave = createExportWrapper("stackSave");
+/** @type {function(...*):?} */
+var stackRestore = createExportWrapper("stackRestore");
+/** @type {function(...*):?} */
+var stackAlloc = createExportWrapper("stackAlloc");
+/** @type {function(...*):?} */
+var _emscripten_stack_get_current = function() {
+  return (_emscripten_stack_get_current = Module["asm"]["emscripten_stack_get_current"]).apply(null, arguments);
+};
 
 /** @type {function(...*):?} */
-var stackSave = Module["stackSave"] = createExportWrapper("stackSave");
-
-/** @type {function(...*):?} */
-var stackRestore = Module["stackRestore"] = createExportWrapper("stackRestore");
-
-/** @type {function(...*):?} */
-var stackAlloc = Module["stackAlloc"] = createExportWrapper("stackAlloc");
-
-/** @type {function(...*):?} */
-var ___cxa_is_pointer_type = Module["___cxa_is_pointer_type"] = createExportWrapper("__cxa_is_pointer_type");
-
+var ___cxa_is_pointer_type = createExportWrapper("__cxa_is_pointer_type");
 /** @type {function(...*):?} */
 var ___set_stack_limits = Module["___set_stack_limits"] = createExportWrapper("__set_stack_limits");
-
 /** @type {function(...*):?} */
 var dynCall_jiji = Module["dynCall_jiji"] = createExportWrapper("dynCall_jiji");
-
 /** @type {function(...*):?} */
 var dynCall_ji = Module["dynCall_ji"] = createExportWrapper("dynCall_ji");
-
 /** @type {function(...*):?} */
 var dynCall_viijii = Module["dynCall_viijii"] = createExportWrapper("dynCall_viijii");
-
 /** @type {function(...*):?} */
 var dynCall_iiiiij = Module["dynCall_iiiiij"] = createExportWrapper("dynCall_iiiiij");
-
 /** @type {function(...*):?} */
 var dynCall_iiiiijj = Module["dynCall_iiiiijj"] = createExportWrapper("dynCall_iiiiijj");
-
 /** @type {function(...*):?} */
 var dynCall_iiiiiijj = Module["dynCall_iiiiiijj"] = createExportWrapper("dynCall_iiiiiijj");
+var ___start_em_js = Module['___start_em_js'] = 677764;
+var ___stop_em_js = Module['___stop_em_js'] = 679341;
 
-var ___start_em_js = Module['___start_em_js'] = 163631;
-var ___stop_em_js = Module['___stop_em_js'] = 163670;
-
-
-
+// include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
 
-Module["addRunDependency"] = addRunDependency;
-Module["removeRunDependency"] = removeRunDependency;
-Module["FS_createPath"] = FS.createPath;
-Module["FS_createDataFile"] = FS.createDataFile;
-Module["FS_createPreloadedFile"] = FS.createPreloadedFile;
-Module["FS_createLazyFile"] = FS.createLazyFile;
-Module["FS_createDevice"] = FS.createDevice;
-Module["FS_unlink"] = FS.unlink;
 Module["keepRuntimeAlive"] = keepRuntimeAlive;
 Module["wasmMemory"] = wasmMemory;
 Module["stackAlloc"] = stackAlloc;
 Module["stackSave"] = stackSave;
 Module["stackRestore"] = stackRestore;
+Module["ccall"] = ccall;
 Module["cwrap"] = cwrap;
 Module["ExitStatus"] = ExitStatus;
-var unexportedRuntimeSymbols = [
+var missingLibrarySymbols = [
+  'emscripten_realloc_buffer',
+  'inetPton4',
+  'inetNtop4',
+  'inetPton6',
+  'inetNtop6',
+  'readSockaddr',
+  'writeSockaddr',
+  'getHostByName',
+  'traverseStack',
+  'convertPCtoSourceLocation',
+  'jstoi_s',
+  'getDynCaller',
+  'maybeExit',
+  'asmjsMangle',
+  'handleAllocator',
+  'getNativeTypeSize',
+  'STACK_SIZE',
+  'STACK_ALIGN',
+  'POINTER_SIZE',
+  'ASSERTIONS',
+  'writeI53ToI64Clamped',
+  'writeI53ToI64Signaling',
+  'writeI53ToU64Clamped',
+  'writeI53ToU64Signaling',
+  'convertI32PairToI53',
+  'convertU32PairToI53',
+  'uleb128Encode',
+  'sigToWasmTypes',
+  'generateFuncType',
+  'convertJsFunctionToWasm',
+  'getEmptyTableSlot',
+  'updateTableMap',
+  'getFunctionAddress',
+  'addFunction',
+  'removeFunction',
+  'reallyNegative',
+  'unSign',
+  'strLen',
+  'reSign',
+  'formatString',
+  'intArrayToString',
+  'AsciiToString',
+  'stringToAscii',
+  'UTF16ToString',
+  'stringToUTF16',
+  'lengthBytesUTF16',
+  'UTF32ToString',
+  'stringToUTF32',
+  'lengthBytesUTF32',
+  'writeStringToMemory',
+  'getSocketFromFD',
+  'getSocketAddress',
+  'fillDeviceOrientationEventData',
+  'registerDeviceOrientationEventCallback',
+  'fillDeviceMotionEventData',
+  'registerDeviceMotionEventCallback',
+  'screenOrientation',
+  'fillOrientationChangeEventData',
+  'registerOrientationChangeEventCallback',
+  'hideEverythingExceptGivenElement',
+  'restoreHiddenElements',
+  'softFullscreenResizeWebGLRenderTarget',
+  'registerPointerlockErrorEventCallback',
+  'fillBatteryEventData',
+  'battery',
+  'registerBatteryEventCallback',
+  'jsStackTrace',
+  'stackTrace',
+  'checkWasiClock',
+  'createDyncallWrapper',
+  'setImmediateWrapped',
+  'clearImmediateWrapped',
+  'polyfillSetImmediate',
+  'newNativePromise',
+  'getPromise',
+  'exception_addRef',
+  'exception_decRef',
+  '_setNetworkCallback',
+  'writeGLArray',
+  'SDL_unicode',
+  'SDL_ttfContext',
+  'SDL_audio',
+  'GLFW_Window',
+  'runAndAbortIfError',
+  'ALLOC_NORMAL',
+  'ALLOC_STACK',
+  'allocate',
+];
+missingLibrarySymbols.forEach(missingLibrarySymbol)
+
+var unexportedSymbols = [
   'run',
   'UTF8ArrayToString',
   'UTF8ToString',
@@ -10848,14 +10812,16 @@ var unexportedRuntimeSymbols = [
   'addOnPreMain',
   'addOnExit',
   'addOnPostRun',
+  'addRunDependency',
+  'removeRunDependency',
   'FS_createFolder',
+  'FS_createPath',
+  'FS_createDataFile',
+  'FS_createPreloadedFile',
+  'FS_createLazyFile',
   'FS_createLink',
-  'getLEB',
-  'getFunctionTables',
-  'alignFunctionTables',
-  'registerFunctions',
-  'prettyPrint',
-  'getCompilerSetting',
+  'FS_createDevice',
+  'FS_unlink',
   'out',
   'err',
   'callMain',
@@ -10870,97 +10836,53 @@ var unexportedRuntimeSymbols = [
   'exitJS',
   'getHeapMax',
   'abortOnCannotGrowMemory',
-  'emscripten_realloc_buffer',
   'ENV',
   'ERRNO_CODES',
   'ERRNO_MESSAGES',
   'setErrNo',
-  'inetPton4',
-  'inetNtop4',
-  'inetPton6',
-  'inetNtop6',
-  'readSockaddr',
-  'writeSockaddr',
   'DNS',
-  'getHostByName',
   'Protocols',
   'Sockets',
   'getRandomDevice',
+  'timers',
   'warnOnce',
-  'traverseStack',
   'UNWIND_CACHE',
-  'convertPCtoSourceLocation',
-  'readAsmConstArgsArray',
-  'readAsmConstArgs',
-  'mainThreadEM_ASM',
+  'readEmAsmArgsArray',
+  'readEmAsmArgs',
+  'runEmAsmFunction',
+  'runMainThreadEmAsm',
   'jstoi_q',
-  'jstoi_s',
   'getExecutableName',
   'listenOnce',
   'autoResumeAudioContext',
   'dynCallLegacy',
-  'getDynCaller',
   'dynCall',
   'handleException',
   'runtimeKeepalivePush',
   'runtimeKeepalivePop',
   'callUserCallback',
-  'maybeExit',
   'safeSetTimeout',
-  'asmjsMangle',
   'asyncLoad',
   'alignMemory',
   'mmapAlloc',
   'writeI53ToI64',
-  'writeI53ToI64Clamped',
-  'writeI53ToI64Signaling',
-  'writeI53ToU64Clamped',
-  'writeI53ToU64Signaling',
   'readI53FromI64',
   'readI53FromU64',
-  'convertI32PairToI53',
   'convertI32PairToI53Checked',
-  'convertU32PairToI53',
   'getCFunc',
-  'ccall',
-  'uleb128Encode',
-  'sigToWasmTypes',
-  'generateFuncType',
-  'convertJsFunctionToWasm',
   'freeTableIndexes',
   'functionsInTableMap',
-  'getEmptyTableSlot',
-  'updateTableMap',
-  'addFunction',
-  'removeFunction',
-  'reallyNegative',
-  'unSign',
-  'strLen',
-  'reSign',
-  'formatString',
   'setValue',
   'getValue',
   'PATH',
   'PATH_FS',
   'intArrayFromString',
-  'intArrayToString',
-  'AsciiToString',
-  'stringToAscii',
   'UTF16Decoder',
-  'UTF16ToString',
-  'stringToUTF16',
-  'lengthBytesUTF16',
-  'UTF32ToString',
-  'stringToUTF32',
-  'lengthBytesUTF32',
   'allocateUTF8',
   'allocateUTF8OnStack',
-  'writeStringToMemory',
   'writeArrayToMemory',
   'writeAsciiToMemory',
   'SYSCALLS',
-  'getSocketFromFD',
-  'getSocketAddress',
   'JSEvents',
   'registerKeyEventCallback',
   'specialHTMLTargets',
@@ -10973,28 +10895,17 @@ var unexportedRuntimeSymbols = [
   'registerWheelEventCallback',
   'registerUiEventCallback',
   'registerFocusEventCallback',
-  'fillDeviceOrientationEventData',
-  'registerDeviceOrientationEventCallback',
-  'fillDeviceMotionEventData',
-  'registerDeviceMotionEventCallback',
-  'screenOrientation',
-  'fillOrientationChangeEventData',
-  'registerOrientationChangeEventCallback',
   'fillFullscreenChangeEventData',
   'registerFullscreenChangeEventCallback',
   'JSEvents_requestFullscreen',
   'JSEvents_resizeCanvasForFullscreen',
   'registerRestoreOldStyle',
-  'hideEverythingExceptGivenElement',
-  'restoreHiddenElements',
   'setLetterbox',
   'currentFullscreenStrategy',
   'restoreOldWindowedStyle',
-  'softFullscreenResizeWebGLRenderTarget',
   'doRequestFullscreen',
   'fillPointerlockChangeEventData',
   'registerPointerlockChangeEventCallback',
-  'registerPointerlockErrorEventCallback',
   'requestPointerLock',
   'fillVisibilityChangeEventData',
   'registerVisibilityChangeEventCallback',
@@ -11002,30 +10913,19 @@ var unexportedRuntimeSymbols = [
   'fillGamepadEventData',
   'registerGamepadEventCallback',
   'registerBeforeUnloadEventCallback',
-  'fillBatteryEventData',
-  'battery',
-  'registerBatteryEventCallback',
   'setCanvasElementSize',
   'getCanvasElementSize',
   'demangle',
   'demangleAll',
-  'jsStackTrace',
-  'stackTrace',
   'getEnvStrings',
-  'checkWasiClock',
   'doReadv',
   'doWritev',
   'dlopenMissingError',
-  'createDyncallWrapper',
-  'setImmediateWrapped',
-  'clearImmediateWrapped',
-  'polyfillSetImmediate',
+  'promiseMap',
   'uncaughtExceptionCount',
   'exceptionLast',
   'exceptionCaught',
   'ExceptionInfo',
-  'exception_addRef',
-  'exception_decRef',
   'Browser',
   'setMainLoop',
   'wget',
@@ -11034,7 +10934,6 @@ var unexportedRuntimeSymbols = [
   'TTY',
   'PIPEFS',
   'SOCKFS',
-  '_setNetworkCallback',
   'tempFixedLengthArray',
   'miniTempWebGLFloatBuffers',
   'heapObjectForWebGLType',
@@ -11048,23 +10947,14 @@ var unexportedRuntimeSymbols = [
   'webglPrepareUniformLocationsBeforeFirstUse',
   'webglGetLeftBracePos',
   'emscriptenWebGLGetVertexAttrib',
-  'writeGLArray',
   'AL',
-  'SDL_unicode',
-  'SDL_ttfContext',
-  'SDL_audio',
   'SDL',
   'SDL_gfx',
   'GLUT',
   'EGL',
-  'GLFW_Window',
   'GLFW',
   'GLEW',
   'IDBStore',
-  'runAndAbortIfError',
-  'ALLOC_NORMAL',
-  'ALLOC_STACK',
-  'allocate',
   'PThread',
   'killThread',
   'cleanupThread',
@@ -11081,87 +10971,8 @@ var unexportedRuntimeSymbols = [
   'emscriptenGetAudioObject',
   '_EmAudioDispatchProcessorCallback',
 ];
-unexportedRuntimeSymbols.forEach(unexportedRuntimeSymbol);
-var missingLibrarySymbols = [
-  'emscripten_realloc_buffer',
-  'inetPton4',
-  'inetNtop4',
-  'inetPton6',
-  'inetNtop6',
-  'readSockaddr',
-  'writeSockaddr',
-  'getHostByName',
-  'traverseStack',
-  'convertPCtoSourceLocation',
-  'jstoi_s',
-  'getDynCaller',
-  'asmjsMangle',
-  'writeI53ToI64Clamped',
-  'writeI53ToI64Signaling',
-  'writeI53ToU64Clamped',
-  'writeI53ToU64Signaling',
-  'convertI32PairToI53',
-  'convertU32PairToI53',
-  'uleb128Encode',
-  'sigToWasmTypes',
-  'generateFuncType',
-  'convertJsFunctionToWasm',
-  'getEmptyTableSlot',
-  'updateTableMap',
-  'addFunction',
-  'removeFunction',
-  'reallyNegative',
-  'unSign',
-  'strLen',
-  'reSign',
-  'formatString',
-  'intArrayToString',
-  'AsciiToString',
-  'stringToAscii',
-  'UTF16ToString',
-  'stringToUTF16',
-  'lengthBytesUTF16',
-  'UTF32ToString',
-  'stringToUTF32',
-  'lengthBytesUTF32',
-  'writeStringToMemory',
-  'getSocketFromFD',
-  'getSocketAddress',
-  'fillDeviceOrientationEventData',
-  'registerDeviceOrientationEventCallback',
-  'fillDeviceMotionEventData',
-  'registerDeviceMotionEventCallback',
-  'screenOrientation',
-  'fillOrientationChangeEventData',
-  'registerOrientationChangeEventCallback',
-  'hideEverythingExceptGivenElement',
-  'restoreHiddenElements',
-  'softFullscreenResizeWebGLRenderTarget',
-  'registerPointerlockErrorEventCallback',
-  'fillBatteryEventData',
-  'battery',
-  'registerBatteryEventCallback',
-  'jsStackTrace',
-  'stackTrace',
-  'checkWasiClock',
-  'createDyncallWrapper',
-  'setImmediateWrapped',
-  'clearImmediateWrapped',
-  'polyfillSetImmediate',
-  'exception_addRef',
-  'exception_decRef',
-  '_setNetworkCallback',
-  'writeGLArray',
-  'SDL_unicode',
-  'SDL_ttfContext',
-  'SDL_audio',
-  'GLFW_Window',
-  'runAndAbortIfError',
-  'ALLOC_NORMAL',
-  'ALLOC_STACK',
-  'allocate',
-];
-missingLibrarySymbols.forEach(missingLibrarySymbol)
+unexportedSymbols.forEach(unexportedRuntimeSymbol);
+
 
 
 var calledRun;
@@ -11172,13 +10983,12 @@ dependenciesFulfilled = function runCaller() {
   if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 };
 
-function callMain(args) {
+function callMain(args = []) {
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 
-  var entryFunction = Module['_main'];
+  var entryFunction = _main;
 
-  args = args || [];
   args.unshift(thisProgram);
 
   var argc = args.length;
@@ -11216,8 +11026,7 @@ function stackCheckInit() {
 }
 
 /** @type {function(Array=)} */
-function run(args) {
-  args = args || arguments_;
+function run(args = arguments_) {
 
   if (runDependencies > 0) {
     return;
@@ -11232,7 +11041,7 @@ function run(args) {
 
   if (ENVIRONMENT_IS_PTHREAD) {
     initRuntime();
-    postMessage({ 'cmd': 'loaded' });
+    startWorker(Module);
     return;
   }
 
@@ -11332,6 +11141,4 @@ if (Module['noInitialRun']) shouldRunNow = false;
 run();
 
 
-
-
-
+// end include: postamble.js

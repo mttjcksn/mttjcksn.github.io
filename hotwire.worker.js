@@ -57,9 +57,25 @@ self.onunhandledrejection = (e) => {
   throw e.reason ?? e;
 };
 
-self.onmessage = (e) => {
+function handleMessage(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+
+    // Until we initialize the runtime, queue up any further incoming messages.
+    let messageQueue = [];
+    self.onmessage = (e) => messageQueue.push(e);
+
+    // And add a callback for when the runtime is initialized.
+    self.startWorker = (instance) => {
+      // Notify the main thread that this thread has loaded.
+      postMessage({ 'cmd': 'loaded' });
+      // Process any messages that were queued before the thread was ready.
+      for (let msg of messageQueue) {
+        handleMessage(msg);
+      }
+      // Restore the real message handler.
+      self.onmessage = handleMessage;
+    };
 
       // Module and memory were sent from main thread
       Module['wasmModule'] = e.data.wasmModule;
@@ -86,18 +102,6 @@ self.onmessage = (e) => {
         URL.revokeObjectURL(objectUrl);
       }
     } else if (e.data.cmd === 'run') {
-      // This worker was idle, and now should start executing its pthread entry
-      // point.
-      // performance.now() is specced to return a wallclock time in msecs since
-      // that Web Worker/main thread launched. However for pthreads this can
-      // cause subtle problems in emscripten_get_now() as this essentially
-      // would measure time from pthread_create(), meaning that the clocks
-      // between each threads would be wildly out of sync. Therefore sync all
-      // pthreads to the clock on the main browser thread, so that different
-      // threads see a somewhat coherent clock across each of them
-      // (+/- 0.1msecs in testing).
-      Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
-
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
 
@@ -174,5 +178,7 @@ self.onmessage = (e) => {
     throw ex;
   }
 };
+
+self.onmessage = handleMessage;
 
 
