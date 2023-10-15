@@ -17,23 +17,26 @@
       padding-right: 0;
       margin-left: auto;
       margin-right: auto;
-      display: block;
     }
 
     div.emscripten {
       text-align: center;
     }
 
-    /*div.emscripten_border { border: 1px solid black; }*/
+    div.emscripten_border { 
+      width: 100vw; 
+      height: 100vh; 
+      display: flex;
+      justify-content: center;
+    }
+
     /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
     canvas.emscripten {
-      top: 0px;
-      left: 0px;
-      position: absolute;
       border: 0px none;
       background-color: black;
       width: 0px;
       height: 0px;
+      margin: 0 auto;
     }
 
     .spinner {
@@ -45,7 +48,6 @@
       margin-right: auto;
       display: block;
       vertical-align: top;
-
 
       -webkit-animation: rotation .8s linear infinite;
       -moz-animation: rotation .8s linear infinite;
@@ -187,8 +189,9 @@
           progressElement.value = null;
           progressElement.max = null;
           progressElement.hidden = true;
-          canvas.style.width = "100vw";
-          canvas.style.height = "100vh";
+          canvas.style.width = "520px";
+          canvas.style.height = "410px";
+          canvas.style.marginTop = "50px";
           if (!text) spinnerElement.style.display = 'none';
         }
         statusElement.innerHTML = text;
@@ -238,4 +241,3 @@
 </body>
 
 </html>
-

@@ -15,5 +15,3 @@ onmessage = function(d) {
 	// these are not needed anymore.
 	d.wasm = d.mem = d.js = 0;
 }
-
-
