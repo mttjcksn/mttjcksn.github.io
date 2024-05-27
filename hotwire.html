@@ -15,8 +15,20 @@
     <link rel="shortcut icon" href="https://www.raylib.com/favicon.ico">
 
     <style>
-        body { margin: 0px;  background-color: black;}
-        canvas.emscripten { border: 0px none; background-color: black; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: black;
+        }
+
+        canvas.emscripten {
+            border: 0 none;
+            background-color: black;
+        }
+        
         div.emscripten { justify-content: center; }
     </style>
     <script type='text/javascript' src="https://cdn.jsdelivr.net/gh/eligrey/FileSaver.js/dist/FileSaver.min.js"> </script>
