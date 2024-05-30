@@ -50,6 +50,66 @@
             saveAs(blob, localFSname);
         }
     </script>
+    <script>
+        // Flag to prevent recursive event handling
+        let isDispatchingEvent = false;
+
+        // Global mouse move handler
+        function globalMouseMove(event) {
+            if (isDispatchingEvent) return;
+
+            // Find the canvas element
+            var canvas = document.getElementById('canvas');
+            // Create a new mouse event
+            var mouseEvent = new MouseEvent('mousemove', {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+
+            // Set the flag to true to indicate event dispatching
+            isDispatchingEvent = true;
+            // Dispatch the event to the canvas element
+            canvas.dispatchEvent(mouseEvent);
+            // Reset the flag after dispatching
+            isDispatchingEvent = false;
+        }
+
+        // Global mouse up handler
+        function globalMouseUp(event) {
+            if (isDispatchingEvent) return;
+
+            // Find the canvas element
+            var canvas = document.getElementById('canvas');
+            // Create a new mouse event
+            var mouseEvent = new MouseEvent('mouseup', {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                button: event.button,
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+
+            // Set the flag to true to indicate event dispatching
+            isDispatchingEvent = true;
+            // Dispatch the event to the canvas element
+            canvas.dispatchEvent(mouseEvent);
+            // Reset the flag after dispatching
+            isDispatchingEvent = false;
+        }
+
+        // Register global event listeners
+        function registerGlobalMouseEvents() {
+            document.addEventListener('mousemove', globalMouseMove);
+            document.addEventListener('mouseup', globalMouseUp);
+        }
+
+        // Ensure the events are registered after the DOM is loaded
+        window.onload = registerGlobalMouseEvents;
+    </script>
     </head>
     <body>
       <div class="emscripten">
