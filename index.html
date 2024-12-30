@@ -5,11 +5,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat+Subrayada:wght@400;700&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hotwire</title>
-    <script type="module" crossorigin src="/assets/index-CIAozJNL.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DKZIph0C.css">
+    <script type="module" crossorigin src="/assets/index-C4rIqcrQ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CXBdOrl2.css">
   </head>
   <body>
     <div id="root"></div>
-    <script src="coi-serviceworker.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .register('/coi-serviceworker.js')
+          .then((registration) => {
+            console.log('Service Worker registered:', registration.scope);
+          })
+          .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+      }
+    </script>
   </body>
 </html>

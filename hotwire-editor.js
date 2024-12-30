@@ -880,8 +880,8 @@ function dbg(...args) {
 // === Body ===
 
 var ASM_CONSTS = {
-  60420: ($0, $1) => { let audioContext = emscriptenGetAudioObject($0); let audioWorkletNode = emscriptenGetAudioObject($1); { console.log("Creating input node with sample rate:"); console.log(audioContext.sampleRate); navigator.mediaDevices.getUserMedia({ audio : { deviceId : undefined, echoCancellation : false, noiseSuppression : false, autoGainControl : false, sampleRate : audioContext.sampleRate } }) .then( function(stream) { console.log(stream.getAudioTracks()[0].getConstraints()); let src = Module["audio_src"] = audioContext.createMediaStreamSource(stream); audioContext.resume(); src.connect(audioWorkletNode); audioWorkletNode.connect(audioContext.destination); }, function(err){ console.log("Failed to get mic."); } ); } },  
- 61137: ($0) => { let audioContext = emscriptenGetAudioObject($0); if (audioContext.state == 'running') { audioContext.suspend(); } }
+  60436: ($0, $1) => { let audioContext = emscriptenGetAudioObject($0); let audioWorkletNode = emscriptenGetAudioObject($1); { console.log("Creating input node with sample rate:"); console.log(audioContext.sampleRate); navigator.mediaDevices.getUserMedia({ audio : { deviceId : undefined, echoCancellation : false, noiseSuppression : false, autoGainControl : false, sampleRate : audioContext.sampleRate } }) .then( function(stream) { console.log(stream.getAudioTracks()[0].getConstraints()); let src = Module["audio_src"] = audioContext.createMediaStreamSource(stream); audioContext.resume(); src.connect(audioWorkletNode); audioWorkletNode.connect(audioContext.destination); }, function(err){ console.log("Failed to get mic."); } ); } },  
+ 61153: ($0) => { let audioContext = emscriptenGetAudioObject($0); if (audioContext.state == 'running') { audioContext.suspend(); } }
 };
 function isFirefox() { return navigator.userAgent.indexOf("Firefox") != -1; }
 function isSafari() { return navigator.vendor == "Apple Computer, Inc."; }
